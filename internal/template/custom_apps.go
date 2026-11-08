@@ -134,9 +134,9 @@ func postApplyHook(appPath string) (string, []string) {
 			file string
 			cmd  []string
 		}{
-			{"post-apply.ps1", []string{"powershell.exe", "-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-File"}},
-			{"post-apply.cmd", []string{"cmd.exe", "/c"}},
-			{"post-apply.bat", []string{"cmd.exe", "/c"}},
+			{"post-apply.ps1", []string{windowsPowerShell(), "-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-File"}},
+			{"post-apply.cmd", []string{windowsCmd(), "/c"}},
+			{"post-apply.bat", []string{windowsCmd(), "/c"}},
 		} {
 			path := filepath.Join(appPath, hook.file)
 			if platform.FileExists(path) {
@@ -152,6 +152,22 @@ func postApplyHook(appPath string) (string, []string) {
 		return path, []string{"bash", path}
 	}
 	return "", nil
+}
+
+// windowsPowerShell and windowsCmd find the system shells without relying
+// on PATH.
+func windowsPowerShell() string {
+	if root := os.Getenv("SystemRoot"); root != "" {
+		return filepath.Join(root, "System32", "WindowsPowerShell", "v1.0", "powershell.exe")
+	}
+	return "powershell.exe"
+}
+
+func windowsCmd() string {
+	if comspec := os.Getenv("ComSpec"); comspec != "" {
+		return comspec
+	}
+	return "cmd.exe"
 }
 
 // installDestination links dest to the generated output. Windows only allows
