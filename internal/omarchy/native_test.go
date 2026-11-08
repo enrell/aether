@@ -1,3 +1,7 @@
+//go:build !windows
+
+// Omarchy is Linux-only; these tests drive its CLI through shell-script fakes.
+
 package omarchy
 
 import (

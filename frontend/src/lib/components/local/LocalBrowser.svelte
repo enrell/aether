@@ -30,6 +30,7 @@
     import {formatFileSize} from '$lib/utils/format';
     import {getCardSize, CARD_MIN_WIDTH} from '$lib/stores/cardsize.svelte';
     import {getSettings} from '$lib/stores/settings.svelte';
+    import {getIsWindows} from '$lib/stores/platform.svelte';
     import type {wallpaper} from '../../../../wailsjs/go/models';
 
     type Wallpaper = wallpaper.WallpaperInfo;
@@ -43,7 +44,10 @@
     let previewSrc = $state<string>('');
     let loadError = $state('');
     let wallpaperFolder = $derived(
-        getSettings().wallpaperFolder || '~/Wallpapers'
+        getSettings().wallpaperFolder ||
+            (getIsWindows()
+                ? '%USERPROFILE%\\Pictures\\Wallpapers'
+                : '~/Wallpapers')
     );
 
     // Viewport windowing: at 10k+ wallpapers, mounting every card freezes the
@@ -191,6 +195,7 @@
             if (path) selectWallpaper(path);
         } catch (err) {
             console.error('OpenFileDialog failed', err);
+            showToast('Could not open the file picker');
         }
     }
 

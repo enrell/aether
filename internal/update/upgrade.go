@@ -23,8 +23,11 @@ func Upgrade(ctx context.Context, release Release, stdout, stderr io.Writer) err
 		fmt.Fprintf(stdout, "Aether %s is already up to date.\n", release.CurrentVersion)
 		return nil
 	}
+	if runtime.GOOS == "windows" {
+		return installWindowsBinary(ctx, release, stdout)
+	}
 	if runtime.GOOS != "linux" {
-		return fmt.Errorf("automatic upgrades are currently supported on Linux only")
+		return fmt.Errorf("automatic upgrades are currently supported on Linux and Windows only")
 	}
 
 	if isDebianPackageInstalled(ctx) {
@@ -39,8 +42,11 @@ func OpenUpgradeTerminal(executable string) error {
 	if err := ManagedUpgradeError(); err != nil {
 		return err
 	}
+	if runtime.GOOS == "windows" {
+		return openWindowsUpgradeConsole(executable)
+	}
 	if runtime.GOOS != "linux" {
-		return fmt.Errorf("automatic upgrades are currently supported on Linux only")
+		return fmt.Errorf("automatic upgrades are currently supported on Linux and Windows only")
 	}
 
 	for _, terminal := range []struct {
@@ -187,4 +193,66 @@ func downloadAsset(ctx context.Context, url, name string) (string, func(), error
 		return "", nil, fmt.Errorf("close %s: %w", name, err)
 	}
 	return path, cleanup, nil
+}
+
+// installWindowsBinary downloads the release's Windows build and swaps it in
+// for the running executable. Windows lets a running program be renamed but
+// not overwritten, so the old binary is moved aside to <name>.old and removed
+// on the next start (CleanupReplacedExecutable).
+func installWindowsBinary(ctx context.Context, release Release, stdout io.Writer) error {
+	assetName := windowsAssetName()
+	binaryURL := release.assetURL(assetName)
+	if binaryURL == "" {
+		return fmt.Errorf("release %s does not include %s", release.LatestVersion, assetName)
+	}
+	downloaded, cleanup, err := downloadAsset(ctx, binaryURL, assetName)
+	if err != nil {
+		return err
+	}
+	defer cleanup()
+
+	executable, err := os.Executable()
+	if err != nil {
+		return fmt.Errorf("locate current executable: %w", err)
+	}
+	if resolved, err := filepath.EvalSymlinks(executable); err == nil {
+		executable = resolved
+	}
+	if err := replaceExecutable(executable, downloaded); err != nil {
+		return err
+	}
+	fmt.Fprintf(stdout, "Installed %s to %s\n", assetName, executable)
+	return nil
+}
+
+func replaceExecutable(executable, replacement string) error {
+	staged := executable + ".new"
+	if err := platform.CopyFile(replacement, staged); err != nil {
+		return fmt.Errorf("stage new executable: %w", err)
+	}
+	old := executable + ".old"
+	_ = os.Remove(old)
+	if err := os.Rename(executable, old); err != nil {
+		_ = os.Remove(staged)
+		return fmt.Errorf("move current executable aside: %w", err)
+	}
+	if err := os.Rename(staged, executable); err != nil {
+		if restoreErr := os.Rename(old, executable); restoreErr != nil {
+			return fmt.Errorf("install new executable: %w; restore %s manually from %s: %v", err, executable, old, restoreErr)
+		}
+		_ = os.Remove(staged)
+		return fmt.Errorf("install new executable: %w", err)
+	}
+	return nil
+}
+
+// CleanupReplacedExecutable removes the binary a previous Windows upgrade
+// moved aside.
+func CleanupReplacedExecutable() {
+	if runtime.GOOS != "windows" {
+		return
+	}
+	if executable, err := os.Executable(); err == nil {
+		_ = os.Remove(executable + ".old")
+	}
 }

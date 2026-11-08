@@ -1,3 +1,7 @@
+//go:build !windows
+
+// The Linux handler is registered with xdg-mime; protocol_registry_test.go covers Windows.
+
 package platform
 
 import (

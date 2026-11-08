@@ -148,6 +148,8 @@ Each app folder must contain a `config.json`:
 
 Optional script that runs after the symlink is created. Must be executable (`chmod +x`).
 
+On Windows, use `post-apply.ps1`, `post-apply.cmd` or `post-apply.bat` instead; `destination` may use `%APPDATA%`-style variables, and Aether copies the file when Windows does not allow symlinks. See [Windows](windows.md#custom-apps).
+
 ### How It Works
 
 Custom app templates are part of standalone mode. On Omarchy, Aether emits only files the native theme loader consumes and leaves additional application support to Omarchy hooks.

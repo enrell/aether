@@ -1,6 +1,7 @@
 package main
 
 import (
+	"aether/internal/testenv"
 	"image"
 	"image/color"
 	"image/png"
@@ -15,6 +16,7 @@ import (
 )
 
 func TestThemeFolderExists(t *testing.T) {
+	testenv.SkipOnWindows(t, "Omarchy theme folders")
 	for _, native := range []bool{false, true} {
 		t.Run(map[bool]string{false: "standalone", true: "native"}[native], func(t *testing.T) {
 			t.Setenv("HOME", t.TempDir())
@@ -73,6 +75,7 @@ func TestBlueprintKeepsWallpaperSourceAndBlurIntent(t *testing.T) {
 }
 
 func TestWallpaperOnlyPreservesActiveTheme(t *testing.T) {
+	testenv.SkipOnWindows(t, "Omarchy CLI shell-script fake")
 	home, bin := t.TempDir(), t.TempDir()
 	t.Setenv("HOME", home)
 	t.Setenv("XDG_CONFIG_HOME", filepath.Join(home, ".config"))
@@ -114,6 +117,7 @@ func TestWallpaperOnlyPreservesActiveTheme(t *testing.T) {
 }
 
 func TestSaveAndApplyThemeActivatesTheRenderedVariant(t *testing.T) {
+	testenv.SkipOnWindows(t, "Omarchy CLI shell-script fake")
 	home, bin := t.TempDir(), t.TempDir()
 	t.Setenv("HOME", home)
 	t.Setenv("XDG_CONFIG_HOME", filepath.Join(home, ".config"))

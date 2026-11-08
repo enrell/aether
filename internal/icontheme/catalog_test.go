@@ -1,3 +1,7 @@
+//go:build !windows
+
+// Icon themes are an XDG feature that Aether hides on Windows.
+
 package icontheme
 
 import (

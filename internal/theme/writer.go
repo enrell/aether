@@ -40,6 +40,13 @@ var templateAppNameMap = map[string]string{
 	"vencord.theme.css": "vencord",
 	"warp.yaml":         "warp",
 	"colors.toml":       "colors",
+
+	"windows.json":           "windows",
+	"windows-wallpaper.json": "windows-wallpaper",
+	"windows-terminal.json":  "windows-terminal",
+	"leopardwm.toml":         "leopardwm",
+	"komorebi.json":          "komorebi",
+	"wezterm.lua":            "wezterm",
 }
 
 // omarchyThemeFiles are files the current Omarchy theme loader consumes
@@ -223,11 +230,11 @@ func prepareThemeDir(targetDir string, state *ThemeState) (string, error) {
 	}
 
 	backup := filepath.Join(mediaDir, "previous")
-	if err := os.Rename(bgDir, backup); err != nil {
+	if err := platform.Rename(bgDir, backup); err != nil {
 		return "", fmt.Errorf("backup theme backgrounds: %w", err)
 	}
-	if err := os.Rename(staging, bgDir); err != nil {
-		if restoreErr := os.Rename(backup, bgDir); restoreErr != nil {
+	if err := platform.Rename(staging, bgDir); err != nil {
+		if restoreErr := platform.Rename(backup, bgDir); restoreErr != nil {
 			cleanup = false // Keep the only remaining copy available for recovery.
 			return "", fmt.Errorf("install theme backgrounds: %w; restore backgrounds from %s: %v", err, backup, restoreErr)
 		}
@@ -434,7 +441,8 @@ func (w *Writer) ApplyTheme(state *ThemeState, settings Settings) (*ApplyResult,
 	}
 
 	themeDir := platform.ThemeDir()
-	if _, err := prepareThemeDir(themeDir, state); err != nil {
+	wallpaperDest, err := prepareThemeDir(themeDir, state)
+	if err != nil {
 		return &ApplyResult{Success: false, ThemePath: themeDir}, err
 	}
 	if err := w.processTemplates(variables, themeDir, settings, state.AppOverrides, state.ExtendedColors, state.IconTheme); err != nil {
@@ -454,6 +462,9 @@ func (w *Writer) ApplyTheme(state *ThemeState, settings Settings) (*ApplyResult,
 	}
 	if err := template.ProcessCustomApps(themeDir, variables); err != nil {
 		return &ApplyResult{Success: false, ThemePath: themeDir}, fmt.Errorf("process custom apps: %w", err)
+	}
+	if err := applyWindowsTargets(themeDir, wallpaperDest); err != nil {
+		return &ApplyResult{Success: false, ThemePath: themeDir}, fmt.Errorf("apply Windows targets: %w", err)
 	}
 	return &ApplyResult{Success: true, ThemePath: themeDir}, nil
 }
@@ -697,7 +708,7 @@ func replaceThemeDir(staging, target string, activate func() error) error {
 	backup := ""
 	restore := func(cause error) error {
 		if backup != "" {
-			if err := os.Rename(backup, target); err != nil {
+			if err := platform.Rename(backup, target); err != nil {
 				return fmt.Errorf("%w; restore backup from %s: %v", cause, backup, err)
 			}
 		}
@@ -711,7 +722,7 @@ func replaceThemeDir(staging, target string, activate func() error) error {
 		if err := os.Remove(backup); err != nil {
 			return fmt.Errorf("prepare Omarchy theme backup: %w", err)
 		}
-		if err := os.Rename(target, backup); err != nil {
+		if err := platform.Rename(target, backup); err != nil {
 			return fmt.Errorf("backup Omarchy theme: %w", err)
 		}
 		if err := ensureReplaceableTheme(backup); err != nil {
@@ -720,12 +731,12 @@ func replaceThemeDir(staging, target string, activate func() error) error {
 	} else if !os.IsNotExist(err) {
 		return fmt.Errorf("inspect Omarchy theme target: %w", err)
 	}
-	if err := os.Rename(staging, target); err != nil {
+	if err := platform.Rename(staging, target); err != nil {
 		return restore(fmt.Errorf("install Omarchy theme: %w", err))
 	}
 	if activate != nil {
 		if err := activate(); err != nil {
-			if rollbackErr := os.Rename(target, staging); rollbackErr != nil {
+			if rollbackErr := platform.Rename(target, staging); rollbackErr != nil {
 				return fmt.Errorf("%w; move failed Omarchy theme aside (backup at %s): %v", err, backup, rollbackErr)
 			}
 			return restore(err)
@@ -763,7 +774,7 @@ func (w *Writer) processTemplates(
 
 		outputPath := filepath.Join(outputDir, fileName)
 		appName := getAppNameFromFileName(fileName)
-		if appName != "colors" && !settings.includesApp(appName) && (appName == "icons" || len(appOverrides[appName]) == 0) {
+		if !AppSupported(appName) || appName != "colors" && !settings.includesApp(appName) && (appName == "icons" || len(appOverrides[appName]) == 0) {
 			if err := os.Remove(outputPath); err != nil && !os.IsNotExist(err) {
 				return fmt.Errorf("remove stale template %s: %w", fileName, err)
 			}

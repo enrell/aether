@@ -3,7 +3,9 @@ package blueprint
 import (
 	"encoding/json"
 	"fmt"
+	"net/url"
 	"os"
+	"path"
 	"path/filepath"
 	"strings"
 	"time"
@@ -280,12 +282,12 @@ func parseYAMLValue(raw string) string {
 	return v
 }
 
-func extractNameFromURL(url string) string {
-	parts := strings.Split(url, "/")
-	if len(parts) > 0 {
-		name := parts[len(parts)-1]
-		name = strings.TrimSuffix(name, ".json")
-		if name != "" {
+func extractNameFromURL(rawURL string) string {
+	if parsed, err := url.Parse(rawURL); err == nil && parsed.Path != "" {
+		// path.Base ignores the query string; a "?token=..." suffix would be
+		// an invalid Windows file name.
+		name := strings.TrimSuffix(path.Base(parsed.Path), ".json")
+		if name != "" && name != "." && name != "/" {
 			return name
 		}
 	}
@@ -297,9 +299,14 @@ func SaveImported(bp *Blueprint) (string, error) {
 	dir := platform.BlueprintDir()
 	_ = platform.EnsureDir(dir)
 
-	safeName := strings.ReplaceAll(bp.Name, "/", "-")
-	safeName = strings.ReplaceAll(safeName, " ", "-")
+	safeName := safeFileStem(strings.ReplaceAll(bp.Name, " ", "-"))
+	if safeName == "" {
+		safeName = "imported_blueprint"
+	}
 	filename := fmt.Sprintf("%s_imported_%d.json", safeName, time.Now().Unix())
+	if filepath.Base(filename) != filename {
+		return "", fmt.Errorf("invalid blueprint name")
+	}
 	path := filepath.Join(dir, filename)
 
 	if err := platform.WriteJSON(path, bp); err != nil {

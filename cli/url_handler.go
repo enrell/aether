@@ -6,6 +6,7 @@ import (
 	"net/url"
 	"os"
 	"os/exec"
+	"runtime"
 	"strings"
 	"time"
 
@@ -183,7 +184,14 @@ func runSilentURLApply(imp *pending.Import, templatesFS embed.FS) int {
 		return 0
 	}
 
-	result, err := writer.ApplyTheme(state, theme.DefaultApplySettings())
+	settings := theme.DefaultApplySettings()
+	if runtime.GOOS == "windows" {
+		// Any web page can build a silent link. On Windows applying also
+		// changes the registry, wallpaper and window manager, so a link may
+		// only touch the targets the user enabled in the editor.
+		settings = theme.SavedTargetSettings()
+	}
+	result, err := writer.ApplyTheme(state, settings)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error: apply theme: %v\n", err)
 		return 1

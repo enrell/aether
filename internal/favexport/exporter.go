@@ -16,6 +16,7 @@ import (
 	"io"
 	"net/url"
 	"os"
+	"path"
 	"path/filepath"
 	"strings"
 	"sync"
@@ -59,6 +60,12 @@ type Result struct {
 // *wallhaven.Client satisfies this.
 type Downloader interface {
 	DownloadContext(ctx context.Context, url string) (string, error)
+}
+
+// CacheDownloader is an optional Downloader capability: exports should fetch
+// into the cache instead of the user's wallpaper library.
+type CacheDownloader interface {
+	DownloadForExport(ctx context.Context, url string) (string, error)
 }
 
 // Exporter runs at most one export at a time.
@@ -212,7 +219,15 @@ func (e *Exporter) resolve(ctx context.Context, item Item) resolved {
 		if e.dl == nil {
 			return resolved{item: item, skip: "no downloader available"}
 		}
-		local, err := e.dl.DownloadContext(ctx, item.Path)
+		var (
+			local string
+			err   error
+		)
+		if cacheDL, ok := e.dl.(CacheDownloader); ok {
+			local, err = cacheDL.DownloadForExport(ctx, item.Path)
+		} else {
+			local, err = e.dl.DownloadContext(ctx, item.Path)
+		}
 		if err != nil {
 			if ctx.Err() != nil {
 				return resolved{item: item, skip: "cancelled"}
@@ -310,7 +325,7 @@ func writeArchive(emitCtx, ctx context.Context, results []resolved, partPath, zi
 	} else if !os.IsNotExist(err) {
 		return Result{}, fmt.Errorf("inspect export destination: %w", err)
 	}
-	if err := os.Rename(partPath, zipPath); err != nil {
+	if err := platform.Rename(partPath, zipPath); err != nil {
 		return Result{}, fmt.Errorf("finalize archive: %w", err)
 	}
 
@@ -389,14 +404,21 @@ func isRemote(path string) bool {
 // entryLabel is the preferred file name for an item inside the archive.
 func entryLabel(item Item) string {
 	source := item.Path
-	if isRemote(source) {
+	remote := isRemote(source)
+	if remote {
 		if parsed, err := url.Parse(source); err == nil {
 			source = parsed.Path
 		}
 	}
 	name := sanitizeName(item.Name)
 	if name == "" {
-		name = sanitizeName(filepath.Base(source))
+		// Windows filepath.Base does not treat "/" as a separator, so a URL
+		// path would otherwise become the whole URL with its slashes stripped.
+		if remote {
+			name = sanitizeName(path.Base(source))
+		} else {
+			name = sanitizeName(filepath.Base(source))
+		}
 	}
 	if name == "" {
 		name = "wallpaper"
@@ -425,7 +447,17 @@ func sanitizeName(name string) string {
 		}
 		return r
 	}, name)
-	return strings.Trim(strings.TrimSpace(name), ".")
+	name = strings.Trim(strings.TrimSpace(name), ".")
+	if name == "" {
+		return ""
+	}
+	switch strings.ToUpper(strings.TrimSuffix(name, filepath.Ext(name))) {
+	case "CON", "PRN", "AUX", "NUL",
+		"COM1", "COM2", "COM3", "COM4", "COM5", "COM6", "COM7", "COM8", "COM9",
+		"LPT1", "LPT2", "LPT3", "LPT4", "LPT5", "LPT6", "LPT7", "LPT8", "LPT9":
+		name = "_" + name
+	}
+	return name
 }
 
 // uniqueEntryName suffixes duplicates so two favorites with the same base name

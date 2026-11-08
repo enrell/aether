@@ -49,7 +49,9 @@
                         : 'Skipped: the theme already has a wallpaper with that filename'
                 );
             }
-        } catch {}
+        } catch {
+            showToast('Could not open the file picker');
+        }
     }
 
     function handleRemove(path: string) {

@@ -43,6 +43,12 @@ const APP_LABELS: Record<string, string> = {
     waybar: 'Waybar',
     wofi: 'Wofi',
     zellij: 'Zellij',
+    windows: 'Windows mode & accent',
+    'windows-wallpaper': 'Windows wallpaper',
+    'windows-terminal': 'Windows Terminal',
+    leopardwm: 'LeopardWM',
+    komorebi: 'komorebi',
+    wezterm: 'WezTerm',
 };
 
 export function appLabel(key: string): string {

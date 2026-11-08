@@ -113,6 +113,7 @@
         getOmarchyAvailable,
         initOmarchyCapabilities,
     } from '$lib/stores/omarchy.svelte';
+    import {initPlatform} from '$lib/stores/platform.svelte';
 
     let activeTab = $derived(getActiveTab());
     let commands = $derived(buildCommands());
@@ -300,6 +301,7 @@
         } catch {}
 
         await initOmarchyCapabilities();
+        await initPlatform();
 
         // Focus a specific tab if requested via --tab flag
         try {
@@ -361,37 +363,41 @@
             );
             const hex = input?.value || '';
             if (hex) {
-                navigator.clipboard.writeText(hex).then(() => {
-                    showToast(`Copied ${hex}`);
-                });
+                navigator.clipboard
+                    .writeText(hex)
+                    .then(() => showToast(`Copied ${hex}`))
+                    .catch(() => showToast('Could not access the clipboard'));
             }
         });
 
         // Shift+V - Paste hex into active swatch
         registerShortcut('shift+v', () => {
             if (!getColorPickerOpen()) return;
-            navigator.clipboard.readText().then(text => {
-                let hex = text.trim();
-                // Accept with or without # prefix
-                if (/^[0-9a-fA-F]{6}$/.test(hex)) {
-                    hex = '#' + hex;
-                }
-                if (!/^#[0-9a-fA-F]{6}$/.test(hex)) {
-                    showToast('Clipboard is not a valid hex color');
-                    return;
-                }
-                const overrideApp = getColorPickerOverrideApp();
-                const overrideRole = getColorPickerOverrideRole();
-                const extKey = getColorPickerExtKey();
-                if (overrideApp && overrideRole) {
-                    setAppOverride(overrideApp, overrideRole, hex);
-                } else if (extKey) {
-                    setExtendedColor(extKey, hex);
-                } else {
-                    setColor(getColorPickerIndex(), hex);
-                }
-                showToast(`Pasted ${hex}`);
-            });
+            navigator.clipboard
+                .readText()
+                .then(text => {
+                    let hex = text.trim();
+                    // Accept with or without # prefix
+                    if (/^[0-9a-fA-F]{6}$/.test(hex)) {
+                        hex = '#' + hex;
+                    }
+                    if (!/^#[0-9a-fA-F]{6}$/.test(hex)) {
+                        showToast('Clipboard is not a valid hex color');
+                        return;
+                    }
+                    const overrideApp = getColorPickerOverrideApp();
+                    const overrideRole = getColorPickerOverrideRole();
+                    const extKey = getColorPickerExtKey();
+                    if (overrideApp && overrideRole) {
+                        setAppOverride(overrideApp, overrideRole, hex);
+                    } else if (extKey) {
+                        setExtendedColor(extKey, hex);
+                    } else {
+                        setColor(getColorPickerIndex(), hex);
+                    }
+                    showToast(`Pasted ${hex}`);
+                })
+                .catch(() => showToast('Could not access the clipboard'));
         });
 
         setZoom(getZoom());

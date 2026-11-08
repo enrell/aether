@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io/fs"
 	"os"
+	"path"
 	"path/filepath"
 
 	"aether/internal/platform"
@@ -45,7 +46,8 @@ func installDefaultWallpapers() error {
 		} else if !os.IsNotExist(err) {
 			return fmt.Errorf("inspect default wallpaper %q: %w", entry.Name(), err)
 		}
-		data, err := fs.ReadFile(defaultWallpapers, filepath.Join(defaultWallpapersDir, entry.Name()))
+		// embed.FS paths always use forward slashes, also on Windows.
+		data, err := fs.ReadFile(defaultWallpapers, path.Join(defaultWallpapersDir, entry.Name()))
 		if err != nil {
 			return fmt.Errorf("read bundled wallpaper %q: %w", entry.Name(), err)
 		}

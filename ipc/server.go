@@ -3,15 +3,9 @@ package ipc
 import (
 	"bufio"
 	"encoding/json"
-	"fmt"
 	"log"
 	"net"
-	"os"
-	"path/filepath"
-	"strconv"
-	"strings"
 	"sync"
-	"syscall"
 	"time"
 )
 
@@ -20,41 +14,23 @@ type Dispatcher interface {
 	HandleIPC(req Request) Response
 }
 
-// Server listens on a Unix domain socket for IPC commands.
+// Server listens on a Unix domain socket (a named pipe on Windows) for IPC
+// commands.
 type Server struct {
 	listener net.Listener
 	sockPath string
 	disp     Dispatcher
 	done     chan struct{}
 	wg       sync.WaitGroup
+	cleanup  func()
 }
 
-// NewServer creates and starts an IPC server on the given socket path.
+// NewServer creates and starts an IPC server on the given socket path (a
+// named pipe path on Windows).
 func NewServer(sockPath string, disp Dispatcher) (*Server, error) {
-	if err := cleanStaleSocket(sockPath); err != nil {
-		return nil, err
-	}
-
-	if err := os.MkdirAll(filepath.Dir(sockPath), 0700); err != nil {
-		return nil, fmt.Errorf("ipc: mkdir: %w", err)
-	}
-
-	ln, err := net.Listen("unix", sockPath)
+	ln, cleanup, err := listen(sockPath)
 	if err != nil {
-		return nil, fmt.Errorf("ipc: listen: %w", err)
-	}
-
-	if err := os.Chmod(sockPath, 0600); err != nil {
-		ln.Close()
-		os.Remove(sockPath)
-		return nil, fmt.Errorf("ipc: chmod: %w", err)
-	}
-
-	pidPath := sockPath + ".pid"
-	if err := os.WriteFile(pidPath, []byte(strconv.Itoa(os.Getpid())), 0600); err != nil {
-		ln.Close()
-		os.Remove(sockPath)
-		return nil, fmt.Errorf("ipc: write pid: %w", err)
+		return nil, err
 	}
 
 	s := &Server{
@@ -62,6 +38,7 @@ func NewServer(sockPath string, disp Dispatcher) (*Server, error) {
 		sockPath: sockPath,
 		disp:     disp,
 		done:     make(chan struct{}),
+		cleanup:  cleanup,
 	}
 	s.wg.Add(1)
 	go s.acceptLoop()
@@ -75,8 +52,9 @@ func (s *Server) Close() error {
 	close(s.done)
 	err := s.listener.Close()
 	s.wg.Wait()
-	os.Remove(s.sockPath)
-	os.Remove(s.sockPath + ".pid")
+	if s.cleanup != nil {
+		s.cleanup()
+	}
 	return err
 }
 
@@ -129,39 +107,4 @@ func writeResponse(conn net.Conn, resp Response) {
 	}
 	data = append(data, '\n')
 	conn.Write(data)
-}
-
-// cleanStaleSocket removes a leftover socket from a crashed instance.
-func cleanStaleSocket(sockPath string) error {
-	pidPath := sockPath + ".pid"
-	pidData, err := os.ReadFile(pidPath)
-	if err != nil {
-		// No PID file — remove orphan socket if it exists
-		os.Remove(sockPath)
-		return nil
-	}
-
-	pid, err := strconv.Atoi(strings.TrimSpace(string(pidData)))
-	if err != nil {
-		os.Remove(pidPath)
-		os.Remove(sockPath)
-		return nil
-	}
-
-	proc, err := os.FindProcess(pid)
-	if err != nil {
-		os.Remove(pidPath)
-		os.Remove(sockPath)
-		return nil
-	}
-
-	if err := proc.Signal(syscall.Signal(0)); err != nil {
-		// Process is dead — clean up stale files
-		os.Remove(pidPath)
-		os.Remove(sockPath)
-		return nil
-	}
-
-	// Process is still running
-	return fmt.Errorf("ipc: aether is already running (pid %d)", pid)
 }

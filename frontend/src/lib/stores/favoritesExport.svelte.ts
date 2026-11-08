@@ -50,19 +50,15 @@ export function dismissExportResult(): void {
     result = null;
 }
 
-function folderURL(zipPath: string): string {
-    const dir = zipPath.slice(0, zipPath.lastIndexOf('/'));
-    return 'file://' + dir.split('/').map(encodeURIComponent).join('/');
+async function showExportFolder(zipPath: string): Promise<void> {
+    const {ShowFileInFolder} = await import('../../../wailsjs/go/main/App');
+    await ShowFileInFolder(zipPath);
 }
 
 export async function openExportFolder(): Promise<void> {
     if (!result) return;
-    const url = folderURL(result.zipPath);
     try {
-        const {BrowserOpenURL} = await import(
-            '../../../wailsjs/runtime/runtime'
-        );
-        BrowserOpenURL(url);
+        await showExportFolder(result.zipPath);
     } catch {
         showToast('Could not open the export folder');
     }
@@ -119,9 +115,7 @@ export function initExportEvents(): Promise<void> {
 }
 
 async function subscribeExportEvents(): Promise<void> {
-    const {EventsOn, BrowserOpenURL} = await import(
-        '../../../wailsjs/runtime/runtime'
-    );
+    const {EventsOn} = await import('../../../wailsjs/runtime/runtime');
     EventsOn(
         'favorites-export-progress',
         (progress: {
@@ -145,7 +139,11 @@ async function subscribeExportEvents(): Promise<void> {
                 duration: 8000,
                 action: {
                     label: 'Open folder',
-                    run: () => BrowserOpenURL(folderURL(completed.zipPath)),
+                    run: () => {
+                        void showExportFolder(completed.zipPath).catch(() =>
+                            showToast('Could not open the export folder')
+                        );
+                    },
                 },
             }
         );

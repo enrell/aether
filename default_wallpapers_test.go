@@ -1,6 +1,8 @@
 package main
 
 import (
+	"aether/internal/platform"
+	"aether/internal/testenv"
 	"os"
 	"path/filepath"
 	"testing"
@@ -10,12 +12,13 @@ func TestInstallDefaultWallpapers(t *testing.T) {
 	home := t.TempDir()
 	t.Setenv("HOME", home)
 	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	testenv.WindowsProfile(t, home)
 
 	if err := installDefaultWallpapers(); err != nil {
 		t.Fatal(err)
 	}
 
-	dir := filepath.Join(home, "Wallpapers", "Aether")
+	dir := filepath.Join(platform.WallpaperDir(), "Aether")
 	entries, err := os.ReadDir(dir)
 	if err != nil {
 		t.Fatal(err)

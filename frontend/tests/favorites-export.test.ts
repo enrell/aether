@@ -6,6 +6,7 @@ const api = vi.hoisted(() => ({
     ExportFavorites: vi.fn(),
     IsFavoritesExportRunning: vi.fn(),
     CancelFavoritesExport: vi.fn(),
+    ShowFileInFolder: vi.fn(),
 }));
 vi.mock('../wailsjs/runtime/runtime', () => ({
     EventsOn: vi.fn((name: string, callback: (data?: unknown) => void) =>
@@ -35,6 +36,7 @@ beforeEach(async () => {
     vi.mocked(api.CancelFavoritesExport)
         .mockReset()
         .mockResolvedValue(undefined);
+    vi.mocked(api.ShowFileInFolder).mockReset().mockResolvedValue(undefined);
     exports = await import('../src/lib/stores/favoritesExport.svelte');
     expect(exports.getExportBusy()).toBe(false);
     expect(exports.getExportResult()).toBeNull();
@@ -107,6 +109,14 @@ test('a dismissed directory dialog releases the start guard', async () => {
     expect(exports.getExportBusy()).toBe(false);
     await exports.startExport(['/two.png']);
     expect(api.ExportFavorites).toHaveBeenCalledTimes(2);
+});
+
+test('opening the export folder asks the backend for the containing folder', async () => {
+    await exports.initExportEvents();
+    emit('completed', complete);
+    await settle();
+    await exports.openExportFolder();
+    expect(api.ShowFileInFolder).toHaveBeenCalledWith(complete.zipPath);
 });
 
 test('the completion panel retains skipped-file details until dismissal', async () => {

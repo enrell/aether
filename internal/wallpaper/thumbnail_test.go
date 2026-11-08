@@ -7,6 +7,7 @@ import (
 	"image/png"
 	"os"
 	"path/filepath"
+	"runtime"
 	"sync"
 	"testing"
 )
@@ -54,7 +55,7 @@ func TestWritePNGAtomicPublication(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if info.Mode().Perm() != 0600 {
+		if runtime.GOOS != "windows" && info.Mode().Perm() != 0600 {
 			t.Errorf("published PNG mode = %04o (existing: %t); want 0600", info.Mode().Perm(), existing)
 		}
 		if _, err := loadImage(dest); err != nil {
@@ -103,7 +104,7 @@ func TestThumbnailAndPreview(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if info.Mode().Perm() != 0600 {
+			if runtime.GOOS != "windows" && info.Mode().Perm() != 0600 {
 				t.Errorf("generated image mode = %04o; want 0600", info.Mode().Perm())
 			}
 			img, err := loadImage(path)

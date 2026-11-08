@@ -133,7 +133,7 @@ func writePNG(path string, img image.Image) error {
 	if err := out.Close(); err != nil {
 		return err
 	}
-	return os.Rename(out.Name(), path)
+	return platform.Rename(out.Name(), path)
 }
 
 // scaleThumbnail scales an image to fit within a size x size bounding box,

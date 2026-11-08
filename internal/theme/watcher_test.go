@@ -1,11 +1,13 @@
 package theme
 
 import (
+	"aether/internal/testenv"
 	"path/filepath"
 	"testing"
 )
 
 func TestCandidatePathsPrefersOmarchyStateTheme(t *testing.T) {
+	testenv.SkipOnWindows(t, "Omarchy state paths")
 	home := t.TempDir()
 	t.Setenv("HOME", home)
 

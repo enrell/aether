@@ -1,11 +1,89 @@
 <script lang="ts">
+    import {onMount} from 'svelte';
     import {getSettings, updateSettings} from '$lib/stores/settings.svelte';
     import {showToast} from '$lib/stores/ui.svelte';
+    import {getIsWindows, initPlatform} from '$lib/stores/platform.svelte';
+
+    type URLHandlerStatus = {
+        supported: boolean;
+        registered: boolean;
+        current: boolean;
+        command: string;
+    };
 
     let choosingFolder = $state(false);
+    let isWindows = $derived(getIsWindows());
     let wallpaperFolder = $derived(
-        getSettings().wallpaperFolder || '~/Wallpapers'
+        getSettings().wallpaperFolder ||
+            (isWindows ? '%USERPROFILE%\\Pictures\\Wallpapers' : '~/Wallpapers')
     );
+    let urlHandler = $state<URLHandlerStatus | null>(null);
+    let canRestore = $state(false);
+    let busy = $state('');
+
+    let urlHandlerText = $derived(
+        !urlHandler?.registered
+            ? 'Not registered. Links from the browser will not open Aether.'
+            : urlHandler.current
+              ? 'Registered for this copy of Aether.'
+              : `Registered for another program: ${urlHandler.command}`
+    );
+
+    async function refreshWindows() {
+        await initPlatform();
+        if (!getIsWindows()) return;
+        try {
+            const {GetURLHandlerStatus, HasWindowsRestore} = await import(
+                '../../../../wailsjs/go/main/App'
+            );
+            urlHandler = (await GetURLHandlerStatus()) as URLHandlerStatus;
+            canRestore = await HasWindowsRestore();
+        } catch (err) {
+            console.error('Windows settings status failed', err);
+        }
+    }
+
+    async function toggleURLHandler() {
+        busy = 'url';
+        try {
+            const {RegisterURLHandler, UnregisterURLHandler} = await import(
+                '../../../../wailsjs/go/main/App'
+            );
+            if (urlHandler?.current) {
+                await UnregisterURLHandler();
+                showToast('aether:// links no longer open Aether');
+            } else {
+                await RegisterURLHandler();
+                showToast('aether:// links now open Aether');
+            }
+        } catch (err) {
+            console.error('URL handler change failed', err);
+            showToast(`Could not change the aether:// handler: ${err}`, 6000);
+        } finally {
+            busy = '';
+            await refreshWindows();
+        }
+    }
+
+    async function restoreWindows() {
+        busy = 'restore';
+        try {
+            const {RestoreWindowsSettings} = await import(
+                '../../../../wailsjs/go/main/App'
+            );
+            showToast(await RestoreWindowsSettings(), 6000);
+        } catch (err) {
+            console.error('RestoreWindowsSettings failed', err);
+            showToast(`Restore incomplete: ${err}`, 8000);
+        } finally {
+            busy = '';
+            await refreshWindows();
+        }
+    }
+
+    onMount(() => {
+        void refreshWindows();
+    });
 
     async function chooseWallpaperFolder() {
         choosingFolder = true;
@@ -41,7 +119,9 @@
                 Settings
             </h1>
             <p class="text-fg-secondary mt-2 text-[13px] leading-relaxed">
-                Configure where Aether finds local wallpapers.
+                Configure where Aether finds local wallpapers{isWindows
+                    ? ' and how it integrates with Windows'
+                    : ''}.
             </p>
         </header>
 
@@ -101,5 +181,77 @@
                 </button>
             </div>
         </section>
+
+        {#if isWindows}
+            <section aria-labelledby="windows-heading" class="mt-9">
+                <h2
+                    id="windows-heading"
+                    class="text-fg-dimmed mb-2.5 text-[10px] font-semibold uppercase tracking-[0.14em]"
+                >
+                    Windows
+                </h2>
+
+                <div class="border-border bg-bg-secondary border">
+                    <div
+                        class="border-border flex flex-col gap-3 border-b p-[18px] sm:flex-row sm:items-start sm:justify-between"
+                    >
+                        <div class="min-w-0">
+                            <div
+                                class="text-fg-primary text-[13px] font-semibold"
+                            >
+                                aether:// links
+                            </div>
+                            <p class="text-fg-dimmed mt-[3px] text-[12px]">
+                                Open theme links from the browser in Aether.
+                                Writes a per-user entry under
+                                HKEY_CURRENT_USER\Software\Classes.
+                            </p>
+                            <p
+                                class="text-fg-secondary mt-2 break-all text-[12px]"
+                            >
+                                {urlHandlerText}
+                            </p>
+                        </div>
+                        <button
+                            type="button"
+                            class="border-border text-fg-primary hover:bg-bg-hover h-8 shrink-0 border px-3.5 text-[12px] font-semibold transition-colors disabled:cursor-wait disabled:opacity-60"
+                            onclick={toggleURLHandler}
+                            disabled={busy !== '' || !urlHandler?.supported}
+                        >
+                            {urlHandler?.current ? 'Remove' : 'Register'}
+                        </button>
+                    </div>
+
+                    <div
+                        class="flex flex-col gap-3 p-[18px] sm:flex-row sm:items-start sm:justify-between"
+                    >
+                        <div class="min-w-0">
+                            <div
+                                class="text-fg-primary text-[13px] font-semibold"
+                            >
+                                Restore Windows settings
+                            </div>
+                            <p class="text-fg-dimmed mt-[3px] text-[12px]">
+                                Put back the wallpaper, light/dark mode, accent
+                                colour, Windows Terminal scheme and window
+                                manager colours you had before Aether first
+                                changed them.
+                            </p>
+                        </div>
+                        <button
+                            type="button"
+                            class="border-border text-fg-primary hover:bg-bg-hover h-8 shrink-0 border px-3.5 text-[12px] font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-60"
+                            onclick={restoreWindows}
+                            disabled={busy !== '' || !canRestore}
+                            title={canRestore
+                                ? 'Undo the Windows changes Aether made'
+                                : 'Aether has not changed Windows settings'}
+                        >
+                            Restore
+                        </button>
+                    </div>
+                </div>
+            </section>
+        {/if}
     </div>
 </div>

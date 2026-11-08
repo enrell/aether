@@ -1,3 +1,7 @@
+//go:build !windows
+
+// On Windows the IPC address is the per-user named pipe, which a test must not take over; ipc/ covers the pipe transport.
+
 package cli
 
 import (

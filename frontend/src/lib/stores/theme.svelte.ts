@@ -15,6 +15,7 @@ import {
     type Snapshot,
 } from '$lib/stores/history.svelte';
 import {debounce} from '$lib/utils/debounce';
+import {includesPath, samePath} from '$lib/utils/path';
 import {showToast} from '$lib/stores/ui.svelte';
 import {buildCurveLUT, applyCurveToColors} from '$lib/utils/canvas-filters';
 
@@ -205,6 +206,17 @@ export function imageBasename(path: string): string {
     return path.split(/[\\/]/).pop() ?? path;
 }
 
+// Windows cannot hold two files whose names differ only by case in one
+// folder, and path comparisons there ignore case. Keep dedupe consistent.
+function imagePathKey(path: string): string {
+    return /^[A-Za-z]:[\\/]|^\\\\/.test(path) ? path.toLowerCase() : path;
+}
+
+function imageNameKey(path: string): string {
+    const name = imageBasename(path);
+    return /^[A-Za-z]:[\\/]|^\\\\/.test(path) ? name.toLowerCase() : name;
+}
+
 export function dedupeAdditionalImages(
     images: readonly string[],
     primaryWallpaper: string
@@ -212,15 +224,15 @@ export function dedupeAdditionalImages(
     const seenPaths = new Set<string>();
     const seenNames = new Set<string>();
     if (primaryWallpaper) {
-        seenPaths.add(primaryWallpaper);
-        seenNames.add(imageBasename(primaryWallpaper));
+        seenPaths.add(imagePathKey(primaryWallpaper));
+        seenNames.add(imageNameKey(primaryWallpaper));
     }
     const unique: string[] = [];
     for (const image of images) {
         if (!image) continue;
-        const name = imageBasename(image);
-        if (seenPaths.has(image) || seenNames.has(name)) continue;
-        seenPaths.add(image);
+        const name = imageNameKey(image);
+        if (seenPaths.has(imagePathKey(image)) || seenNames.has(name)) continue;
+        seenPaths.add(imagePathKey(image));
         seenNames.add(name);
         unique.push(image);
     }
@@ -240,7 +252,7 @@ function dropImagesCollidingWith(primary: string): void {
     const kept = dedupeAdditionalImages(additionalImages, primary);
     if (sameStringList(kept, additionalImages)) return;
     const dropped = additionalImages.filter(
-        image => image !== primary && !kept.includes(image)
+        image => !samePath(image, primary) && !includesPath(kept, image)
     );
     additionalImages = kept;
     if (dropped.length > 0) {
@@ -759,7 +771,7 @@ export function setAdditionalImages(images: string[]): void {
 // Returns false when the image repeats a path or a filename that the theme
 // already uses, including the main wallpaper.
 export function addAdditionalImage(path: string): boolean {
-    if (!path || additionalImages.includes(path)) return false;
+    if (!path || includesPath(additionalImages, path)) return false;
     const next = dedupeAdditionalImages(
         [...additionalImages, path],
         wallpaperPath
@@ -772,11 +784,11 @@ export function addAdditionalImage(path: string): boolean {
 
 export function removeAdditionalImage(path: string): void {
     invalidateThemeRequests(false);
-    additionalImages = additionalImages.filter(p => p !== path);
+    additionalImages = additionalImages.filter(p => !samePath(p, path));
 }
 
 export function swapMainWithAdditional(path: string): void {
-    const idx = additionalImages.indexOf(path);
+    const idx = additionalImages.findIndex(p => samePath(p, path));
     if (idx === -1) return;
     invalidateThemeRequests(false);
     const oldMain = wallpaperPath;

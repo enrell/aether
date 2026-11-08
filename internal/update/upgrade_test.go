@@ -1,6 +1,7 @@
 package update
 
 import (
+	"aether/internal/testenv"
 	"bytes"
 	"context"
 	"os"
@@ -30,6 +31,7 @@ func TestManagedUpgradeGuards(t *testing.T) {
 }
 
 func TestRegisterURLHandler(t *testing.T) {
+	testenv.SkipOnWindows(t, "xdg-mime shell-script fake")
 	dir := t.TempDir()
 	argsPath := filepath.Join(dir, "args")
 	commandPath := filepath.Join(dir, "xdg-mime")

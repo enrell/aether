@@ -70,7 +70,16 @@ func DownloadToCache(rawURL string, maxBytes int64) (string, error) {
 	if err := DownloadFile(client, rawURL, dest, maxBytes); err != nil {
 		return "", err
 	}
+	// A URL whose path has no extension (Unsplash, Cloudinary, ...) would
+	// otherwise be invisible to the extension-based image readers.
+	if isImageLimit(maxBytes) {
+		return EnsureImageExtension(dest)
+	}
 	return dest, nil
+}
+
+func isImageLimit(maxBytes int64) bool {
+	return maxBytes == MaxImageBytes
 }
 
 // DownloadFile fetches a public HTTPS URL, bounds its size, and publishes it
@@ -143,7 +152,7 @@ func DownloadFileContext(ctx context.Context, client *http.Client, rawURL, dest 
 	if err := ctx.Err(); err != nil {
 		return err
 	}
-	if err := os.Rename(tmpName, dest); err != nil {
+	if err := platform.Rename(tmpName, dest); err != nil {
 		return fmt.Errorf("rename: %w", err)
 	}
 	return nil

@@ -126,6 +126,10 @@ export function GetPendingExternalImport() {
   return window['go']['main']['App']['GetPendingExternalImport']();
 }
 
+export function GetPlatform() {
+  return window['go']['main']['App']['GetPlatform']();
+}
+
 export function GetPreview(arg1) {
   return window['go']['main']['App']['GetPreview'](arg1);
 }
@@ -150,6 +154,10 @@ export function GetThumbnail(arg1) {
   return window['go']['main']['App']['GetThumbnail'](arg1);
 }
 
+export function GetURLHandlerStatus() {
+  return window['go']['main']['App']['GetURLHandlerStatus']();
+}
+
 export function GetWallhavenConfig() {
   return window['go']['main']['App']['GetWallhavenConfig']();
 }
@@ -164,6 +172,10 @@ export function HandleDroppedFiles(arg1) {
 
 export function HandleIPC(arg1) {
   return window['go']['main']['App']['HandleIPC'](arg1);
+}
+
+export function HasWindowsRestore() {
+  return window['go']['main']['App']['HasWindowsRestore']();
 }
 
 export function ImportFileDialog(arg1) {
@@ -230,8 +242,16 @@ export function RefreshInstalledIconThemes() {
   return window['go']['main']['App']['RefreshInstalledIconThemes']();
 }
 
+export function RegisterURLHandler() {
+  return window['go']['main']['App']['RegisterURLHandler']();
+}
+
 export function ResetState() {
   return window['go']['main']['App']['ResetState']();
+}
+
+export function RestoreWindowsSettings() {
+  return window['go']['main']['App']['RestoreWindowsSettings']();
 }
 
 export function SaveAndApplyTheme(arg1) {
@@ -266,6 +286,10 @@ export function SearchWallhaven(arg1) {
   return window['go']['main']['App']['SearchWallhaven'](arg1);
 }
 
+export function ShowFileInFolder(arg1) {
+  return window['go']['main']['App']['ShowFileInFolder'](arg1);
+}
+
 export function SetExtractionMode(arg1) {
   return window['go']['main']['App']['SetExtractionMode'](arg1);
 }
@@ -292,4 +316,8 @@ export function ThemeFolderExists(arg1) {
 
 export function ToggleFavorite(arg1, arg2, arg3) {
   return window['go']['main']['App']['ToggleFavorite'](arg1, arg2, arg3);
+}
+
+export function UnregisterURLHandler() {
+  return window['go']['main']['App']['UnregisterURLHandler']();
 }

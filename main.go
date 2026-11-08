@@ -16,6 +16,7 @@ import (
 	"github.com/wailsapp/wails/v2/pkg/options/assetserver"
 	wailslinux "github.com/wailsapp/wails/v2/pkg/options/linux"
 	wailsmac "github.com/wailsapp/wails/v2/pkg/options/mac"
+	wailswindows "github.com/wailsapp/wails/v2/pkg/options/windows"
 )
 
 //go:embed all:frontend/dist
@@ -27,6 +28,7 @@ func main() {
 
 	// CLI mode: if first arg starts with -- and isn't a GUI flag, dispatch to CLI
 	if len(os.Args) > 1 && strings.HasPrefix(os.Args[1], "--") && !guiFlags[os.Args[1]] {
+		attachConsole()
 		os.Exit(cli.Run(os.Args[1:], EmbeddedTemplates))
 	}
 
@@ -38,13 +40,16 @@ func main() {
 		"list-blueprints": true, "set-wallpaper": true, "get-variables": true,
 	}
 	if len(os.Args) > 1 && ipcCommands[os.Args[1]] {
+		attachConsole()
 		os.Exit(cli.RunIPC(os.Args[1:]))
 	}
 	if len(os.Args) > 1 && os.Args[1] == "upgrade" {
+		attachConsole()
 		os.Exit(cli.Run(os.Args[1:], EmbeddedTemplates))
 	}
 
 	if ipc.IsRunning() {
+		attachConsole()
 		fmt.Fprintln(os.Stderr, "Aether is already running. Use IPC commands to control it.")
 		os.Exit(1)
 	}
@@ -96,6 +101,10 @@ func main() {
 			ProgramName: "Aether",
 			// A non-nil Linux options struct bypasses Wails' GPU-safe default.
 			WebviewGpuPolicy: wailslinux.WebviewGpuPolicyNever,
+		},
+		Windows: &wailswindows.Options{
+			// Follow the system light/dark setting for the title bar.
+			Theme: wailswindows.SystemDefault,
 		},
 		Mac: &wailsmac.Options{
 			TitleBar:             wailsmac.TitleBarHiddenInset(),

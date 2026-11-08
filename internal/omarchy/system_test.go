@@ -1,3 +1,7 @@
+//go:build !windows
+
+// Omarchy is Linux-only; these tests use its XDG state layout and symlinks.
+
 package omarchy
 
 import (

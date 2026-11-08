@@ -7,6 +7,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"runtime"
 	"sort"
 	"strings"
 	"time"
@@ -23,6 +24,10 @@ type cacheData struct {
 
 // getCacheDir returns the cache directory for color extraction results.
 func getCacheDir() string {
+	if runtime.GOOS == "windows" {
+		// %LOCALAPPDATA%\aether\cache\color-cache, next to Aether's other caches.
+		return platform.ColorCacheDir()
+	}
 	homeDir, err := os.UserHomeDir()
 	if err != nil {
 		homeDir = os.Getenv("HOME")

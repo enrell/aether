@@ -29,6 +29,7 @@
         isPending,
     } from '$lib/stores/imagecache.svelte';
     import ImagePreview from '$lib/components/shared/ImagePreview.svelte';
+    import {pathBasename, pathDisplayDir} from '$lib/utils/path';
 
     let {onedit, expanded = false}: {onedit?: () => void; expanded?: boolean} =
         $props();
@@ -39,13 +40,9 @@
     // Extraction still uses wallpaperPath (the unblurred original).
     let displayPath = $derived(blurredPath || wallpaperPath);
     let wallpaperImage = $derived(getCachedFullImage(displayPath) || '');
-    let wallpaperName = $derived(wallpaperPath.split('/').pop() || '');
-    // Show the folder with the home directory as `~`.
-    let wallpaperFolder = $derived(
-        wallpaperPath
-            .slice(0, wallpaperPath.lastIndexOf('/'))
-            .replace(/^\/(?:home|Users)\/[^/]+/, '~')
-    );
+    let wallpaperName = $derived(pathBasename(wallpaperPath));
+    // Show the folder with the home directory as `~` (POSIX and Windows).
+    let wallpaperFolder = $derived(pathDisplayDir(wallpaperPath));
     let naturalSize = $state('');
     let wallpaperMeta = $derived(
         [naturalSize, wallpaperFolder].filter(Boolean).join(' · ')

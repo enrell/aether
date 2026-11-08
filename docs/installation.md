@@ -35,6 +35,10 @@ aether-install-omarchy-plugins
 
 Source builds install them automatically with `make install`, or separately with `make install-omarchy-plugins`. See [Omarchy shell plugins](quickshell.md) for keybinds and controls.
 
+## Windows
+
+Download `aether.exe` and run it; see [Windows](windows.md) for requirements, building from source and the Windows theming targets.
+
 ## macOS
 
 ### Requirements

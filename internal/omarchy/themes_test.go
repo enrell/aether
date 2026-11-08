@@ -1,3 +1,7 @@
+//go:build !windows
+
+// Omarchy is Linux-only; these tests use colon-separated search paths.
+
 package omarchy
 
 import (

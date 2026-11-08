@@ -1,6 +1,6 @@
 # File System Layout
 
-Aether stores files in three standard XDG directories.
+Aether stores files in three standard XDG directories. On Windows they live under `%APPDATA%\aether` and `%LOCALAPPDATA%\aether`; see [Windows](windows.md#where-aether-keeps-its-files).
 
 ## Configuration (`~/.config/aether/`)
 
@@ -54,6 +54,10 @@ Permanent user data.
 ```
 
 Downloaded wallpapers are kept permanently for offline access.
+
+On Windows downloaded wallpapers are saved in the wallpaper library
+(`%USERPROFILE%\Pictures\Wallpapers`) instead, so they appear in the **Local**
+tab and in Explorer. See [Windows](windows.md#where-aether-keeps-its-files).
 
 ## Omarchy Integration
 

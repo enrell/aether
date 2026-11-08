@@ -1,0 +1,14 @@
+// Windows light/dark mode and accent colour. Aether writes the matching
+// values under HKEY_CURRENT_USER and notifies running apps. Run
+// `aether --restore-windows` to put back the values you had before.
+{
+  // "light" or "dark" for apps and the shell. "appsMode" and "systemMode"
+  // override one side.
+  "mode": "{mode}",
+  // Accent colour of Start, the taskbar, title bars and controls.
+  "accent": "{accent}",
+  // Uncomment to also show the accent on Start and the taskbar, or on title
+  // bars and window borders:
+  // "accentOnTaskbar": true,
+  // "accentOnTitleBars": true,
+}

@@ -543,3 +543,13 @@ AETHER_EXTRA_THEME_DIRS="$HOME/dotfiles/themes:$HOME/work/themes" aether
 
 Useful if you keep themes in a non-omarchy location (e.g. your dotfiles
 repo) or run a distro that puts themes elsewhere.
+
+### Windows
+
+| Command | Purpose |
+|---------|---------|
+| `aether --restore-windows` | Undo the wallpaper, mode, accent colour, Windows Terminal and window manager changes Aether made |
+| `aether --register-url-handler` | Open `aether://` links with this Aether |
+| `aether --unregister-url-handler` | Remove the `aether://` handler |
+
+These commands exist only on Windows. See [Windows](windows.md).

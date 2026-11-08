@@ -4,6 +4,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"runtime"
 
 	"aether/internal/platform"
 )
@@ -14,8 +15,29 @@ const zedOutputFilename = "aether.json"
 // zedSourceFilename is the name of the Zed template file in the theme directory.
 const zedSourceFilename = "aether.zed.json"
 
+// zedThemesDir returns ~/.config/zed/themes, or %APPDATA%\Zed\themes on
+// Windows.
+func zedThemesDir() (string, error) {
+	if runtime.GOOS == "windows" {
+		appData := os.Getenv("APPDATA")
+		if appData == "" {
+			dir, err := os.UserConfigDir()
+			if err != nil {
+				return "", err
+			}
+			appData = dir
+		}
+		return filepath.Join(appData, "Zed", "themes"), nil
+	}
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return "", err
+	}
+	return filepath.Join(home, ".config", "zed", "themes"), nil
+}
+
 // ApplyZedTheme copies the generated aether.zed.json from themeDir to
-// ~/.config/zed/themes/aether.json.
+// Zed's user themes directory as aether.json.
 func ApplyZedTheme(themeDir string) error {
 	sourcePath := filepath.Join(themeDir, zedSourceFilename)
 
@@ -24,12 +46,10 @@ func ApplyZedTheme(themeDir string) error {
 		return nil
 	}
 
-	home, err := os.UserHomeDir()
+	zedThemesDir, err := zedThemesDir()
 	if err != nil {
 		return err
 	}
-
-	zedThemesDir := filepath.Join(home, ".config", "zed", "themes")
 	if err := platform.EnsureDir(zedThemesDir); err != nil {
 		return err
 	}

@@ -3,19 +3,15 @@ package ipc
 import (
 	"bufio"
 	"encoding/json"
-	"errors"
 	"fmt"
-	"net"
-	"os"
-	"syscall"
 	"time"
 )
 
 // Send connects to a running Aether instance and sends a command.
 func Send(sockPath string, req Request) (Response, error) {
-	conn, err := net.DialTimeout("unix", sockPath, 3*time.Second)
+	conn, err := dial(sockPath, 3*time.Second)
 	if err != nil {
-		if errors.Is(err, os.ErrNotExist) || errors.Is(err, syscall.ECONNREFUSED) {
+		if notRunning(err) {
 			return Response{}, fmt.Errorf("aether is not running (no socket at %s)", sockPath)
 		}
 		return Response{}, fmt.Errorf("connect: %w", err)
@@ -51,7 +47,7 @@ func Send(sockPath string, req Request) (Response, error) {
 // IsRunning checks if an Aether instance is listening on the default socket.
 func IsRunning() bool {
 	sockPath := DefaultSocketPath()
-	conn, err := net.DialTimeout("unix", sockPath, 500*time.Millisecond)
+	conn, err := dial(sockPath, 500*time.Millisecond)
 	if err != nil {
 		return false
 	}

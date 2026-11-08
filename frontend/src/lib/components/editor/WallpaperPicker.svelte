@@ -12,7 +12,9 @@
                 setWallpaperPath(path);
                 showToast('Wallpaper selected');
             }
-        } catch {}
+        } catch {
+            showToast('Could not open the file picker');
+        }
     }
 </script>
 

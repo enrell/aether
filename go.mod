@@ -3,9 +3,13 @@ module aether
 go 1.25.0
 
 require (
+	github.com/BurntSushi/toml v1.6.0
+	github.com/Microsoft/go-winio v0.6.2
 	github.com/godbus/dbus/v5 v5.1.0
+	github.com/tailscale/hujson v0.0.0-20241010212012-29efb4a0184b
 	github.com/wailsapp/wails/v2 v2.16.0
 	golang.org/x/image v0.41.0
+	golang.org/x/sys v0.46.0
 )
 
 require (
@@ -34,6 +38,5 @@ require (
 	github.com/wailsapp/mimetype v1.4.1 // indirect
 	golang.org/x/crypto v0.53.0 // indirect
 	golang.org/x/net v0.56.0 // indirect
-	golang.org/x/sys v0.46.0 // indirect
 	golang.org/x/text v0.39.0 // indirect
 )

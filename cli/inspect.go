@@ -57,6 +57,9 @@ func runListApps(args []string, templatesFS embed.FS) int {
 			continue
 		}
 		app := theme.GetAppNameFromFileName(name)
+		if !theme.AppSupported(app) {
+			continue
+		}
 		if !seen[app] {
 			seen[app] = true
 			apps = append(apps, app)

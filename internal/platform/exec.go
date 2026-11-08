@@ -7,6 +7,7 @@ import (
 	"math"
 	"os"
 	"os/exec"
+	"runtime"
 	"strings"
 )
 
@@ -41,6 +42,7 @@ func RunSyncEnv(extraEnv map[string]string, name string, args ...string) (string
 func RunAsync(name string, args ...string) error {
 	cmd := exec.Command(name, args...)
 	cmd.Env = filteredEnv()
+	hideCommandWindow(cmd)
 
 	// Detach: discard all stdio so the child doesn't hold our fds.
 	cmd.Stdin = nil
@@ -54,6 +56,21 @@ func RunAsync(name string, args ...string) error {
 func CommandExists(name string) bool {
 	_, err := exec.LookPath(name)
 	return err == nil
+}
+
+// OpenPath opens a file or folder in the platform's file manager. It returns
+// once the file manager has been started; it does not wait for it to exit.
+func OpenPath(path string) error {
+	switch runtime.GOOS {
+	case "windows":
+		// explorer.exe returns a non-zero exit code even on success, so only
+		// the start error matters.
+		return RunAsync("explorer.exe", path)
+	case "darwin":
+		return RunAsync("open", path)
+	default:
+		return RunAsync("xdg-open", path)
+	}
 }
 
 // IsNvidiaWayland returns true if running on Wayland with an NVIDIA GPU.

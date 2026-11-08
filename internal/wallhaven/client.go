@@ -231,9 +231,26 @@ func (c *Client) Download(imageURL string) (string, error) {
 	return c.DownloadContext(context.Background(), imageURL)
 }
 
+// DownloadForExport fetches a remote favorite into the cache. Favorites export
+// must not leave files in the user's wallpaper library.
+func (c *Client) DownloadForExport(ctx context.Context, imageURL string) (string, error) {
+	dir := filepath.Join(platform.CacheDir(), "favorites-export")
+	return c.downloadContext(ctx, imageURL, dir, wallpaper.MaxImageBytes)
+}
+
 // DownloadContext downloads a wallpaper with cancellation and the shared network limits.
 func (c *Client) DownloadContext(ctx context.Context, imageURL string) (string, error) {
 	return c.downloadContext(ctx, imageURL, platform.DownloadDir(), wallpaper.MaxImageBytes)
+}
+
+// DownloadTo downloads a wallpaper image into destDir, which may be the user's
+// configured wallpaper library rather than the default downloads directory.
+// The directory is created when it does not exist. Returns the local file path.
+func (c *Client) DownloadTo(imageURL, destDir string) (string, error) {
+	if destDir == "" {
+		return c.Download(imageURL)
+	}
+	return c.downloadContext(context.Background(), imageURL, destDir, wallpaper.MaxImageBytes)
 }
 
 func (c *Client) download(rawURL, destDir string, maxBytes int64) (string, error) {
@@ -248,6 +265,13 @@ func (c *Client) downloadContext(ctx context.Context, rawURL, destDir string, ma
 	filename := path.Base(u.Path)
 	if filename == "." || filename == ".." || filename == "/" ||
 		strings.ContainsAny(filename, "\\\x00") {
+		return "", fmt.Errorf("invalid download filename")
+	}
+	// Windows rejects : * ? " < > | in a file name and trims trailing dots
+	// and spaces. Sanitising here keeps a download with such a path usable
+	// instead of failing after the bytes have been fetched.
+	filename = safeDownloadFilename(filename)
+	if filename == "" {
 		return "", fmt.Errorf("invalid download filename")
 	}
 	destPath := filepath.Join(destDir, filename)
@@ -267,7 +291,32 @@ func (c *Client) downloadContext(ctx context.Context, rawURL, destDir string, ma
 	if err := wallpaper.DownloadFileContext(ctx, &client, rawURL, destPath, maxBytes); err != nil {
 		return "", err
 	}
+	// Non-wallhaven URLs are hashed from the URL; if that URL had no
+	// extension, sniff the image so the path stays readable afterwards.
+	if maxBytes == wallpaper.MaxImageBytes {
+		return wallpaper.EnsureImageExtension(destPath)
+	}
 	return destPath, nil
+}
+
+var invalidFilenameChars = regexp.MustCompile(`[<>:"|?*\x00-\x1f]`)
+
+// safeDownloadFilename turns a URL's base name into a name Windows accepts.
+// The same rules are harmless on other platforms and keep downloads portable.
+func safeDownloadFilename(name string) string {
+	name = invalidFilenameChars.ReplaceAllString(name, "_")
+	name = strings.TrimRight(name, " .")
+	if name == "" {
+		return ""
+	}
+	stem := strings.ToUpper(strings.TrimSuffix(name, filepath.Ext(name)))
+	switch stem {
+	case "CON", "PRN", "AUX", "NUL",
+		"COM1", "COM2", "COM3", "COM4", "COM5", "COM6", "COM7", "COM8", "COM9",
+		"LPT1", "LPT2", "LPT3", "LPT4", "LPT5", "LPT6", "LPT7", "LPT8", "LPT9":
+		name = "_" + name
+	}
+	return name
 }
 
 func (c *Client) getJSON(reqURL string, result any) error {

@@ -1,0 +1,9 @@
+# LeopardWM (Windows). Aether sets only these [appearance] keys in
+# %APPDATA%\leopardwm\config\config.toml, keeps the rest of the file as it is,
+# and runs `lwm reload`. LeopardWM colours are six hex digits without "#".
+[appearance]
+active_border_color = "{accent.strip}"
+tab_strip_bg = "{background.strip}"
+tab_strip_active_bg = "{lighter_bg.strip}"
+tab_strip_active_text = "{foreground.strip}"
+tab_strip_inactive_text = "{muted.strip}"

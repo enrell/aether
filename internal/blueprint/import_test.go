@@ -1,6 +1,7 @@
 package blueprint
 
 import (
+	"aether/internal/testenv"
 	"bytes"
 	"encoding/json"
 	"fmt"
@@ -57,6 +58,7 @@ func TestValidateBlueprintRejectsReservedNativeColor(t *testing.T) {
 }
 
 func TestImportCurrentColorsTomlPrefersActiveOmarchyTheme(t *testing.T) {
+	testenv.SkipOnWindows(t, "Omarchy symlinked state")
 	home := t.TempDir()
 	binDir := t.TempDir()
 	t.Setenv("HOME", home)

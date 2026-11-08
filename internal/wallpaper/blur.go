@@ -100,7 +100,7 @@ func CreateBlurredVariant(srcPath, destDir string) (string, error) {
 		_ = os.Remove(tmpName)
 		return "", fmt.Errorf("close temp file: %w", err)
 	}
-	if err := os.Rename(tmpName, outPath); err != nil {
+	if err := platform.Rename(tmpName, outPath); err != nil {
 		_ = os.Remove(tmpName)
 		return "", fmt.Errorf("finalize blurred image: %w", err)
 	}

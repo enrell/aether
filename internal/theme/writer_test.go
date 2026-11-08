@@ -1,6 +1,7 @@
 package theme
 
 import (
+	"aether/internal/testenv"
 	"embed"
 	"os"
 	"path/filepath"
@@ -406,6 +407,9 @@ func setupWriterTestEnv(t *testing.T) string {
 	t.Helper()
 	home := t.TempDir()
 	t.Setenv("HOME", home)
+	testenv.WindowsProfile(t, home)
+	// The fixtures use Linux apps; the writer logic is the same everywhere.
+	withTargetOS(t, "linux")
 	for key, dir := range map[string]string{
 		"XDG_CONFIG_HOME": ".config",
 		"XDG_DATA_HOME":   ".local/share",
@@ -519,6 +523,7 @@ func TestPrepareThemeDirStagesRepeatedPathsOnce(t *testing.T) {
 }
 
 func TestPrepareThemeDirSupportsExistingMediaSources(t *testing.T) {
+	testenv.SkipOnWindows(t, "permission bits and symlinked media")
 	for _, mode := range []string{"self source", "symlink source", "additional only", "color only"} {
 		t.Run(mode, func(t *testing.T) {
 			root := setupWriterTestEnv(t)
@@ -659,7 +664,11 @@ func TestApplyThemeReturnsEditorErrorsBeforeCustomApps(t *testing.T) {
 			home := setupWriterTestEnv(t)
 			target := platform.ThemeDir()
 			writeWriterTestFile(t, filepath.Join(target, zedSourceFilename), "generated Zed theme")
-			block := filepath.Join(home, ".config", "zed")
+			zedThemes, err := zedThemesDir()
+			if err != nil {
+				t.Fatal(err)
+			}
+			block := filepath.Dir(zedThemes)
 			wantError := "apply Zed theme"
 			if editor == "vscode" {
 				block = filepath.Join(home, ".vscode")
@@ -732,6 +741,7 @@ func TestGenerateOmarchyV4OnlyCopiesSelfSourceMedia(t *testing.T) {
 }
 
 func TestApplyOmarchyThemeKeepsBundleTransactionThroughActivation(t *testing.T) {
+	testenv.SkipOnWindows(t, "Omarchy symlinked state")
 	for _, basename := range []string{"wall.png", "different.png"} {
 		for _, failure := range []string{"success", "background", "theme", "color only"} {
 			t.Run(basename+"/"+failure, func(t *testing.T) {
@@ -847,6 +857,7 @@ fi
 }
 
 func TestApplyOmarchyThemeRestoresCopiedRuntimeBackground(t *testing.T) {
+	testenv.SkipOnWindows(t, "Omarchy symlinked state")
 	for _, basename := range []string{"wall.png", "different.png"} {
 		for _, failure := range []string{"theme", "background", "color only"} {
 			t.Run(basename+"/"+failure, func(t *testing.T) {
