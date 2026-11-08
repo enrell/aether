@@ -1,0 +1,7 @@
+// Windows wallpaper. Aether sets the theme's wallpaper on every monitor.
+{
+  // fill, fit, stretch, center, tile or span
+  "style": "fill",
+  // Solid colour shown around a fitted or centred wallpaper.
+  "desktopColor": "{background}"
+}

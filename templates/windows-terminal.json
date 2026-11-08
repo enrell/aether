@@ -1,0 +1,48 @@
+// Windows Terminal. Aether adds or updates the "Aether" colour scheme and
+// window theme in settings.json (Store, Preview, Canary and unpackaged
+// installs) and keeps your other settings. Backups are written next to
+// settings.json as settings.json.aether-original.bak and
+// settings.json.aether-previous.bak.
+{
+  // Profiles that use the scheme: "defaults" (Settings > Defaults, inherited
+  // by every profile without its own colour scheme), "default" (only the
+  // profile in "defaultProfile") or "none".
+  "applyTo": "defaults",
+  "scheme": {
+    "name": "Aether",
+    "background": "{background}",
+    "foreground": "{foreground}",
+    "cursorColor": "{cursor}",
+    "selectionBackground": "{selection_background}",
+    "black": "{black}",
+    "red": "{red}",
+    "green": "{green}",
+    "yellow": "{yellow}",
+    "blue": "{blue}",
+    "purple": "{magenta}",
+    "cyan": "{cyan}",
+    "white": "{white}",
+    "brightBlack": "{bright_black}",
+    "brightRed": "{bright_red}",
+    "brightGreen": "{bright_green}",
+    "brightYellow": "{bright_yellow}",
+    "brightBlue": "{bright_blue}",
+    "brightPurple": "{bright_magenta}",
+    "brightCyan": "{bright_cyan}",
+    "brightWhite": "{bright_white}"
+  },
+  // Window theme for the title bar and tabs. Delete this block to keep the
+  // Terminal theme you use now.
+  "theme": {
+    "name": "Aether",
+    "window": { "applicationTheme": "{mode}" },
+    "tab": {
+      "background": "terminalBackground",
+      "unfocusedBackground": "{dark_bg}"
+    },
+    "tabRow": {
+      "background": "{dark_bg}",
+      "unfocusedBackground": "{darker_bg}"
+    }
+  }
+}

@@ -1,0 +1,29 @@
+// komorebi (Windows). Merged into komorebi.json as a JSON merge patch
+// (RFC 7386): objects merge, null removes a key, other values replace it.
+// Aether then runs `komorebic replace-configuration` to load the file.
+// A custom Base16 theme colours borders, the stackbar and komorebi-bar, and
+// keeps your border role choices (single_border, unfocused_border, ...).
+{
+  "theme": {
+    "palette": "Custom",
+    "name": null,
+    "colours": {
+      "base_00": "{background}",
+      "base_01": "{lighter_bg}",
+      "base_02": "{selection}",
+      "base_03": "{bright_black}",
+      "base_04": "{dark_fg}",
+      "base_05": "{foreground}",
+      "base_06": "{light_fg}",
+      "base_07": "{bright_fg}",
+      "base_08": "{red}",
+      "base_09": "{orange}",
+      "base_0a": "{yellow}",
+      "base_0b": "{green}",
+      "base_0c": "{cyan}",
+      "base_0d": "{accent}",
+      "base_0e": "{magenta}",
+      "base_0f": "{brown}"
+    }
+  }
+}

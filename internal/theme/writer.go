@@ -40,6 +40,13 @@ var templateAppNameMap = map[string]string{
 	"vencord.theme.css": "vencord",
 	"warp.yaml":         "warp",
 	"colors.toml":       "colors",
+
+	"windows.json":           "windows",
+	"windows-wallpaper.json": "windows-wallpaper",
+	"windows-terminal.json":  "windows-terminal",
+	"leopardwm.toml":         "leopardwm",
+	"komorebi.json":          "komorebi",
+	"wezterm.lua":            "wezterm",
 }
 
 // omarchyThemeFiles are files the current Omarchy theme loader consumes
@@ -434,7 +441,8 @@ func (w *Writer) ApplyTheme(state *ThemeState, settings Settings) (*ApplyResult,
 	}
 
 	themeDir := platform.ThemeDir()
-	if _, err := prepareThemeDir(themeDir, state); err != nil {
+	wallpaperDest, err := prepareThemeDir(themeDir, state)
+	if err != nil {
 		return &ApplyResult{Success: false, ThemePath: themeDir}, err
 	}
 	if err := w.processTemplates(variables, themeDir, settings, state.AppOverrides, state.ExtendedColors, state.IconTheme); err != nil {
@@ -454,6 +462,9 @@ func (w *Writer) ApplyTheme(state *ThemeState, settings Settings) (*ApplyResult,
 	}
 	if err := template.ProcessCustomApps(themeDir, variables); err != nil {
 		return &ApplyResult{Success: false, ThemePath: themeDir}, fmt.Errorf("process custom apps: %w", err)
+	}
+	if err := applyWindowsTargets(themeDir, wallpaperDest); err != nil {
+		return &ApplyResult{Success: false, ThemePath: themeDir}, fmt.Errorf("apply Windows targets: %w", err)
 	}
 	return &ApplyResult{Success: true, ThemePath: themeDir}, nil
 }
@@ -763,7 +774,7 @@ func (w *Writer) processTemplates(
 
 		outputPath := filepath.Join(outputDir, fileName)
 		appName := getAppNameFromFileName(fileName)
-		if appName != "colors" && !settings.includesApp(appName) && (appName == "icons" || len(appOverrides[appName]) == 0) {
+		if !AppSupported(appName) || appName != "colors" && !settings.includesApp(appName) && (appName == "icons" || len(appOverrides[appName]) == 0) {
 			if err := os.Remove(outputPath); err != nil && !os.IsNotExist(err) {
 				return fmt.Errorf("remove stale template %s: %w", fileName, err)
 			}

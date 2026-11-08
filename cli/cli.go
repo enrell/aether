@@ -4,6 +4,7 @@ import (
 	"embed"
 	"fmt"
 	"os"
+	"runtime"
 	"strings"
 )
 
@@ -102,6 +103,14 @@ func Run(args []string, templatesFS embed.FS) int {
 		return runToggleFavorite(args[1:])
 	case "--is-favorite":
 		return runIsFavorite(args[1:])
+
+	// --- Windows ---
+	case "--register-url-handler":
+		return runRegisterURLHandler(args[1:])
+	case "--unregister-url-handler":
+		return runUnregisterURLHandler(args[1:])
+	case "--restore-windows":
+		return runRestoreWindows(args[1:])
 
 	// --- Meta ---
 	case "upgrade":
@@ -219,11 +228,24 @@ Remote control (requires running Aether GUI):
 
 GUI options:
   aether --tab <name>                       Open GUI with specific tab
-
+` + windowsUsage() + `
 Global options:
   --json                                    Machine-readable JSON output
   --light-mode                              Use light mode
   --extract-mode <mode>                     Extraction mode (see --list-modes)`)
+}
+
+func windowsUsage() string {
+	if runtime.GOOS != "windows" {
+		return ""
+	}
+	return `
+Windows:
+  aether --register-url-handler             Open aether:// links with this Aether
+  aether --unregister-url-handler           Remove the aether:// handler
+  aether --restore-windows                  Undo the wallpaper, mode, accent, Terminal
+                                              and window manager changes Aether made
+`
 }
 
 func parseFlag(args []string, flag string) (string, []string) {

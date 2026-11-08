@@ -136,6 +136,7 @@ func newSeededState() *theme.ThemeState {
 // startup is called by Wails when the application starts.
 func (a *App) startup(ctx context.Context) {
 	a.ctx = ctx
+	update.CleanupReplacedExecutable()
 	_ = platform.EnsureAllDirs()
 	if err := theme.RetireLegacyGTKStylesheets(); err != nil {
 		log.Printf("retire legacy GTK stylesheets: %v", err)
@@ -507,6 +508,9 @@ func (a *App) ApplyWallpaperOnly(path string) error {
 	}
 	if err := wallpaper.ValidateImageFile(path); err != nil {
 		return err
+	}
+	if runtime.GOOS == "windows" {
+		return setWindowsWallpaper(path)
 	}
 	return omarchy.SetBackground(path)
 }
@@ -1412,6 +1416,9 @@ func (a *App) GetTemplateColors() map[string][]string {
 
 	for _, f := range files {
 		appName := theme.GetAppNameFromFileName(f)
+		if !theme.AppSupported(appName) {
+			continue
+		}
 		if omarchy.IsInstalled() && !theme.SupportsOmarchyOverride(appName) {
 			continue
 		}
