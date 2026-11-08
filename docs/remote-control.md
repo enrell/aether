@@ -2,7 +2,7 @@
 
 Control a running Aether instance from another terminal, a shell script, or an AI coding assistant.
 
-When Aether starts, it listens on a Unix domain socket at `~/.config/aether/aether.sock`. CLI subcommands connect to this socket to send commands and receive state back.
+When Aether starts, it listens on a Unix domain socket at `~/.config/aether/aether.sock`. CLI subcommands connect to this socket to send commands and receive state back. On Windows it listens on the named pipe `\\.\pipe\aether-<user SID>` instead, which only your account can open; the commands and protocol are the same.
 
 ## Quick Start
 

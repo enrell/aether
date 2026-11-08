@@ -11,6 +11,8 @@ https://github.com/user-attachments/assets/58bb3de6-d425-4f8e-a01c-79da7a26a9f0
 A visual theming application for [Omarchy](https://omarchy.org). Extract colors from wallpapers and apply cohesive themes across your entire desktop.
 
 > **Not using Omarchy?** Aether works standalone on any Linux desktop. See the [Standalone Guide](docs/standalone.md) for setup.
+>
+> **On Windows?** Aether themes the wallpaper, light/dark mode and accent colour, Windows Terminal, LeopardWM, komorebi and Windows installs of your editors and terminals. See [Windows](docs/windows.md).
 
 ## Features
 
@@ -154,6 +156,7 @@ From `frontend/`, run `npm ci`, `npm run check`, `npm test`, and `npm run build`
 | [Protocol Handler](docs/protocol-handler.md) | Register `aether://` links |
 | [Omarchy Shell Plugins](docs/quickshell.md) | Native wallpaper and blueprint selectors |
 | [Standalone](docs/standalone.md) | Using Aether without Omarchy |
+| [Windows](docs/windows.md) | Install, targets, undo and limitations on Windows |
 | [Troubleshooting](docs/troubleshooting.md) | Common issues |
 
 ## Complementary Projects

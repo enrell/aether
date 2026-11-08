@@ -1,6 +1,6 @@
 # File System Layout
 
-Aether stores files in three standard XDG directories.
+Aether stores files in three standard XDG directories. On Windows they live under `%APPDATA%\aether` and `%LOCALAPPDATA%\aether`; see [Windows](windows.md#where-aether-keeps-its-files).
 
 ## Configuration (`~/.config/aether/`)
 

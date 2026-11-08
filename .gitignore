@@ -6,3 +6,4 @@ temp/
 build/bin/
 frontend/dist/
 build/darwin/
+build/windows/

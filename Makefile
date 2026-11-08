@@ -1,9 +1,19 @@
-.PHONY: build dev test clean install install-omarchy-plugins
+.PHONY: build build-windows dev test clean install install-omarchy-plugins
 
 WEBKIT_TAGS := $(shell pkg-config --exists webkit2gtk-4.0 2>/dev/null || echo "-tags webkit2_41")
 
 build:
 	wails build $(WEBKIT_TAGS)
+
+# Cross-compiles the Windows GUI (aether.exe) and console (aether-cli.exe)
+# builds. WebView2 needs no cgo, so this works from Linux and WSL. Bindings
+# are not regenerated because that requires a native build.
+WINDOWS_LDFLAGS := -X aether/cli.Version=$(or $(VERSION),dev)
+
+build-windows:
+	wails build -platform windows/amd64 -skipbindings -ldflags "$(WINDOWS_LDFLAGS)"
+	GOOS=windows GOARCH=amd64 go build -buildvcs=false -tags desktop,wv2runtime.download,production \
+		-ldflags "-w -s $(WINDOWS_LDFLAGS)" -o build/bin/aether-cli.exe .
 
 install: build
 ifeq ($(shell uname -s),Darwin)

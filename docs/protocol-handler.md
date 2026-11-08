@@ -27,6 +27,16 @@ xdg-mime default li.oever.aether.url-handler.desktop x-scheme-handler/aether
 
 Run those commands from the Aether source checkout. `make install` already performs these steps.
 
+## Windows
+
+Aether does not register `aether://` on Windows by itself. Opt in with **Settings → Windows → Register** or:
+
+```powershell
+aether --register-url-handler
+```
+
+This writes `HKEY_CURRENT_USER\Software\Classes\aether` for the current user only. Remove it with `aether --unregister-url-handler`. See [Windows](windows.md#aether-links).
+
 ## Package releases
 
 Linux packages must install the handler desktop file at:
