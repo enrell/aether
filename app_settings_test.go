@@ -1,8 +1,10 @@
 package main
 
 import (
+	"aether/internal/testenv"
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 )
 
@@ -11,6 +13,7 @@ func TestGetSettingsIncludesDefaultWallpaperFolder(t *testing.T) {
 	home := t.TempDir()
 	t.Setenv("XDG_CONFIG_HOME", configHome)
 	t.Setenv("HOME", home)
+	testenv.WindowsProfile(t, home)
 
 	settings := NewApp().GetSettings()
 	got, ok := settings[wallpaperFolderSetting].(string)
@@ -18,6 +21,9 @@ func TestGetSettingsIncludesDefaultWallpaperFolder(t *testing.T) {
 		t.Fatalf("wallpaper folder type = %T; want string", settings[wallpaperFolderSetting])
 	}
 	want := filepath.Join(home, "Wallpapers")
+	if runtime.GOOS == "windows" {
+		want = filepath.Join(home, "Pictures", "Wallpapers")
+	}
 	if got != want {
 		t.Errorf("wallpaper folder = %q; want %q", got, want)
 	}

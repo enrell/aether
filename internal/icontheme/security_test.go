@@ -1,3 +1,8 @@
+//go:build !windows
+
+// These cases rely on Unix permissions, FIFOs and symlinks. Icon themes are an
+// XDG feature that Aether hides on Windows.
+
 package icontheme
 
 import (

@@ -1,0 +1,93 @@
+name: CI
+
+on:
+  push:
+    branches: ["main", "windows"]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  linux:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.1-dev pkg-config
+
+      - name: Frontend checks
+        working-directory: frontend
+        run: |
+          npm ci
+          npm run check
+          npm test
+          npm run build
+
+      - name: Go tests
+        run: |
+          make test
+          go test -race -tags webkit2_41 ./...
+
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+
+      - name: Build frontend
+        working-directory: frontend
+        run: |
+          npm ci
+          npm run build
+
+      - name: Vet
+        run: go vet ./...
+
+      - name: Go tests
+        env:
+          # Lets internal/winapi exercise the real registry under a throwaway
+          # HKCU\Software\AetherTest-* key on the CI runner.
+          AETHER_TEST_REAL_REGISTRY: '1'
+        run: go test ./...
+
+      - name: Install Wails CLI
+        run: go install github.com/wailsapp/wails/v2/cmd/wails@v2.16.0
+
+      - name: Build
+        shell: bash
+        run: |
+          wails build -platform windows/amd64 -skipbindings
+          go build -buildvcs=false -tags desktop,wv2runtime.download,production -ldflags "-w -s" -o build/bin/aether-cli.exe .
+
+      - name: Smoke test
+        shell: bash
+        run: |
+          build/bin/aether-cli.exe --version
+          build/bin/aether-cli.exe --list-apps
+          build/bin/aether-cli.exe --palette-from-color "#7aa2f7" --json > /dev/null
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: aether-windows-amd64
+          path: |
+            build/bin/aether.exe
+            build/bin/aether-cli.exe

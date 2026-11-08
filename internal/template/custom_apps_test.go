@@ -1,6 +1,7 @@
 package template
 
 import (
+	"aether/internal/testenv"
 	"encoding/json"
 	"errors"
 	"os"
@@ -306,6 +307,7 @@ func TestProcessCustomApps_ReturnsAllErrors(t *testing.T) {
 }
 
 func TestProcessCustomApps_HookAfterInstall(t *testing.T) {
+	testenv.SkipOnWindows(t, "post-apply.sh and symlinks; custom_apps_windows_test.go covers Windows hooks")
 	customDir, themeDir, hookLog := setupCustomAppsTest(t)
 	destination := filepath.Join(t.TempDir(), "destination")
 	appDir := writeCustomApp(t, customDir, "testapp", destination, true)
@@ -341,6 +343,7 @@ func TestProcessCustomApps_HookAfterInstall(t *testing.T) {
 }
 
 func TestProcessCustomApps_ReturnsHookStartFailure(t *testing.T) {
+	testenv.SkipOnWindows(t, "post-apply.sh without bash is skipped on Windows")
 	customDir, themeDir, _ := setupCustomAppsTest(t)
 	t.Setenv("PATH", t.TempDir())
 	writeCustomApp(t, customDir, "testapp", "", true)
@@ -354,6 +357,7 @@ func setupCustomAppsTest(t *testing.T) (customDir, themeDir, hookLog string) {
 	t.Helper()
 	home := t.TempDir()
 	t.Setenv("HOME", home)
+	testenv.WindowsProfile(t, home)
 	t.Setenv("XDG_CONFIG_HOME", filepath.Join(home, ".config"))
 	binDir := t.TempDir()
 	hookLog = filepath.Join(home, "hooks.log")

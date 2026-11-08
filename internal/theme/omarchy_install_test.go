@@ -1,3 +1,7 @@
+//go:build !windows
+
+// Omarchy is Linux-only; these tests use its CLI and symlinked state.
+
 package theme
 
 import (
