@@ -6,39 +6,22 @@ import (
 	"runtime"
 )
 
-// ConfigDir returns ~/.config/aether.
+// ConfigDir returns ~/.config/aether (%APPDATA%\aether on Windows).
 func ConfigDir() string {
-	dir, err := os.UserConfigDir()
-	if err != nil {
-		dir = filepath.Join(homeDir(), ".config")
-	}
-	return filepath.Join(dir, "aether")
+	return configDir()
 }
 
-// CacheDir returns ~/.cache/aether.
+// CacheDir returns ~/.cache/aether (%LOCALAPPDATA%\aether\cache on Windows).
 func CacheDir() string {
-	dir, err := os.UserCacheDir()
-	if err != nil {
-		dir = filepath.Join(homeDir(), ".cache")
-	}
-	return filepath.Join(dir, "aether")
+	return cacheDir()
 }
 
 // DataDir returns the platform-specific data directory for Aether.
 // Linux: ~/.local/share/aether (XDG)
-// macOS: ~/Library/Application Support/aether (via os.UserConfigDir)
+// macOS: ~/Library/Application Support/aether/data (via os.UserConfigDir)
+// Windows: %LOCALAPPDATA%\aether\data
 func DataDir() string {
-	if xdg := os.Getenv("XDG_DATA_HOME"); xdg != "" {
-		return filepath.Join(xdg, "aether")
-	}
-	if runtime.GOOS == "darwin" {
-		// macOS: use ~/Library/Application Support
-		dir, err := os.UserConfigDir()
-		if err == nil {
-			return filepath.Join(dir, "aether", "data")
-		}
-	}
-	return filepath.Join(homeDir(), ".local", "share", "aether")
+	return dataDir()
 }
 
 // ThemeDir returns ~/.config/aether/theme.
@@ -76,9 +59,10 @@ func OmarchyThemeDir() string {
 	return filepath.Join(OmarchyThemesDir(), "aether")
 }
 
-// WallpaperDir returns ~/Wallpapers, the default local scan directory.
+// WallpaperDir returns ~/Wallpapers, the default local scan directory
+// (%USERPROFILE%\Pictures\Wallpapers on Windows).
 func WallpaperDir() string {
-	return filepath.Join(homeDir(), "Wallpapers")
+	return wallpaperDir()
 }
 
 // DownloadDir returns ~/.local/share/aether/wallpapers.
@@ -123,6 +107,11 @@ func EnsureAllDirs() error {
 		}
 	}
 	return nil
+}
+
+// HomeDir returns the current user's home directory.
+func HomeDir() string {
+	return homeDir()
 }
 
 // homeDir returns the current user's home directory.

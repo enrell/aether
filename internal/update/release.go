@@ -6,12 +6,20 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"runtime"
 	"strconv"
 	"strings"
 	"time"
 )
 
-const latestReleaseURL = "https://api.github.com/repos/omacom/aether/releases/latest"
+// releaseRepo is the GitHub repository whose releases Aether installs. Forks
+// can set it at build time with
+// -ldflags "-X aether/internal/update.releaseRepo=<owner>/<repo>".
+var releaseRepo = "omacom/aether"
+
+func latestReleaseURL() string {
+	return "https://api.github.com/repos/" + releaseRepo + "/releases/latest"
+}
 
 // Release describes the newest published Aether release and its relation to
 // the version currently running.
@@ -43,7 +51,7 @@ func Check(ctx context.Context, currentVersion string) (Release, error) {
 		return Release{CurrentVersion: normalizeVersion(currentVersion), UpdateCommand: command}, nil
 	}
 	client := &http.Client{Timeout: 8 * time.Second}
-	return check(ctx, currentVersion, latestReleaseURL, client)
+	return check(ctx, currentVersion, latestReleaseURL(), client)
 }
 
 func check(ctx context.Context, currentVersion, url string, client *http.Client) (Release, error) {
@@ -76,13 +84,24 @@ func check(ctx context.Context, currentVersion, url string, client *http.Client)
 	if err != nil {
 		return Release{}, err
 	}
-	return Release{
+	release := Release{
 		CurrentVersion:  normalizeVersion(currentVersion),
 		LatestVersion:   normalizeVersion(latest.TagName),
 		ReleaseURL:      latest.HTMLURL,
 		UpdateAvailable: newer,
 		assets:          latest.Assets,
-	}, nil
+	}
+	// Windows installs only from a release that ships a Windows build, so a
+	// Linux-only release is not offered as an update there.
+	if runtime.GOOS == "windows" && release.assetURL(windowsAssetName()) == "" {
+		release.UpdateAvailable = false
+	}
+	return release, nil
+}
+
+// windowsAssetName is the release asset of the Windows GUI build.
+func windowsAssetName() string {
+	return fmt.Sprintf("aether-windows-%s.exe", runtime.GOARCH)
 }
 
 func (r Release) assetURL(name string) string {

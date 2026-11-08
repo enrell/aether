@@ -1,12 +1,14 @@
 package platform
 
 import (
+	"aether/internal/testenv"
 	"errors"
 	"fmt"
 	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"sync"
 	"testing"
@@ -45,11 +47,15 @@ func TestAtomicFileWrites(t *testing.T) {
 					if err := os.WriteFile(path, []byte("old contents"), 0600); err != nil {
 						t.Fatal(err)
 					}
-					old, err = os.Open(path)
-					if err != nil {
-						t.Fatal(err)
+					// Unix keeps the replaced inode readable; Windows refuses
+					// to replace an open file, so only Unix holds it open.
+					if runtime.GOOS != "windows" {
+						old, err = os.Open(path)
+						if err != nil {
+							t.Fatal(err)
+						}
+						defer old.Close()
 					}
-					defer old.Close()
 				}
 
 				if err := writer.write(path); err != nil {
@@ -60,7 +66,9 @@ func TestAtomicFileWrites(t *testing.T) {
 				if err != nil {
 					t.Fatal(err)
 				}
-				if existing {
+				if runtime.GOOS == "windows" {
+					// Windows has no Unix permission bits to preserve.
+				} else if existing {
 					if info.Mode().Perm() != 0600 {
 						t.Errorf("permissions = %o, want 600", info.Mode().Perm())
 					}
@@ -78,6 +86,7 @@ func TestAtomicFileWrites(t *testing.T) {
 }
 
 func TestAtomicWritesPreserveDestinationSymlink(t *testing.T) {
+	testenv.SkipOnWindows(t, "symlinks")
 	for _, operation := range []string{"JSON", "text", "copy"} {
 		t.Run(operation, func(t *testing.T) {
 			dir := t.TempDir()
@@ -128,6 +137,7 @@ func TestAtomicWritesPreserveDestinationSymlink(t *testing.T) {
 }
 
 func TestAtomicWritePermissionsRespectUmask(t *testing.T) {
+	testenv.SkipOnWindows(t, "umask and permission bits")
 	if os.Getenv("AETHER_TEST_UMASK") != "1" {
 		// Umask is process-wide, so change it only in a dedicated subprocess.
 		shell, err := exec.LookPath("sh")
@@ -208,6 +218,7 @@ func TestWriteFileAtomicReadFailure(t *testing.T) {
 }
 
 func TestWriteFileAtomicReportsCleanupFailure(t *testing.T) {
+	testenv.SkipOnWindows(t, "removing a file that is still open")
 	dir := t.TempDir()
 	path := filepath.Join(dir, "output")
 	if err := os.WriteFile(path, []byte("valid contents"), 0600); err != nil {
@@ -308,6 +319,7 @@ func TestCopyFileOntoItself(t *testing.T) {
 }
 
 func TestAtomicWritesConcurrentReaders(t *testing.T) {
+	testenv.SkipOnWindows(t, "readers of a file being replaced; Windows reports a sharing violation instead")
 	dir := t.TempDir()
 	path := filepath.Join(dir, "output")
 	contents := make([]string, 4)

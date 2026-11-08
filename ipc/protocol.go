@@ -2,15 +2,7 @@ package ipc
 
 import (
 	"encoding/json"
-	"path/filepath"
-
-	"aether/internal/platform"
 )
-
-// DefaultSocketPath returns the path for the Aether IPC socket.
-func DefaultSocketPath() string {
-	return filepath.Join(platform.ConfigDir(), "aether.sock")
-}
 
 // Request is a JSON command sent from the CLI client to the running Aether GUI.
 type Request struct {

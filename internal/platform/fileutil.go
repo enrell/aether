@@ -60,7 +60,7 @@ func CopyFile(src, dst string) (err error) {
 		return err
 	}
 	defer func() {
-		if closeErr := srcFile.Close(); closeErr != nil {
+		if closeErr := srcFile.Close(); closeErr != nil && !errors.Is(closeErr, os.ErrClosed) {
 			err = errors.Join(err, closeErr)
 		}
 	}()
@@ -70,10 +70,18 @@ func CopyFile(src, dst string) (err error) {
 		return err
 	}
 
-	return writeFileAtomic(dst, srcFile, info.Mode().Perm())
+	// Windows cannot replace a file that is still open, so the source is
+	// closed before the rename; this also allows copying a file onto itself.
+	return writeFileAtomicThen(dst, srcFile, info.Mode().Perm(), srcFile.Close)
 }
 
-func writeFileAtomic(path string, content io.Reader, perm os.FileMode) (err error) {
+func writeFileAtomic(path string, content io.Reader, perm os.FileMode) error {
+	return writeFileAtomicThen(path, content, perm, nil)
+}
+
+// writeFileAtomicThen calls beforeRename after the content is written and
+// before the temporary file replaces path.
+func writeFileAtomicThen(path string, content io.Reader, perm os.FileMode, beforeRename func() error) (err error) {
 	if err := EnsureDir(filepath.Dir(path)); err != nil {
 		return err
 	}
@@ -147,7 +155,12 @@ func writeFileAtomic(path string, content io.Reader, perm os.FileMode) (err erro
 	if err != nil {
 		return err
 	}
-	return os.Rename(temp.Name(), path)
+	if beforeRename != nil {
+		if err := beforeRename(); err != nil {
+			return err
+		}
+	}
+	return replaceFile(temp.Name(), path)
 }
 
 // EnsureDir creates the directory at path along with any necessary parents
