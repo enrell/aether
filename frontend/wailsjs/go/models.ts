@@ -650,6 +650,24 @@ export namespace main {
 		}
 	}
 
+	export class URLHandlerStatus {
+	    supported: boolean;
+	    registered: boolean;
+	    current: boolean;
+	    command: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new URLHandlerStatus(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.supported = source["supported"];
+	        this.registered = source["registered"];
+	        this.current = source["current"];
+	        this.command = source["command"];
+	    }
+	}
 }
 
 export namespace omarchy {

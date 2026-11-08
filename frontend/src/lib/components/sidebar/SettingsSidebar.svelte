@@ -15,9 +15,12 @@
         getOmarchyAvailable,
         initOmarchyCapabilities,
     } from '$lib/stores/omarchy.svelte';
+    import {getIsWindows, initPlatform} from '$lib/stores/platform.svelte';
 
     let lightMode = $derived(getLightMode());
     let isOmarchy = $derived(getOmarchyAvailable());
+    // Desktop icon themes are an XDG feature; Windows has no equivalent.
+    let isWindows = $derived(getIsWindows());
 
     const paletteModes = [
         {value: 'dark', label: 'Dark', title: 'Generate a dark palette'},
@@ -25,6 +28,7 @@
     ] as const;
 
     void initOmarchyCapabilities();
+    void initPlatform();
 </script>
 
 <!-- Each section component renders its own bordered <section>. -->
@@ -51,7 +55,9 @@
 
     <SectionLabel label="Adjust" />
     <ColorAdjustments />
-    <IconThemePicker />
+    {#if !isWindows}
+        <IconThemePicker />
+    {/if}
     <AccessibilityPanel />
 
     <SectionLabel label="Targets" />

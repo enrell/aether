@@ -73,6 +73,8 @@ export function GetOmarchyCapabilities():Promise<omarchy.Capabilities>;
 
 export function GetPendingExternalImport():Promise<main.ExternalImportPreview>;
 
+export function GetPlatform():Promise<string>;
+
 export function GetPreview(arg1:string):Promise<string>;
 
 export function GetReleaseStatus(arg1:string):Promise<Record<string, any>>;
@@ -85,6 +87,8 @@ export function GetThemeColors():Promise<Record<string, string>>;
 
 export function GetThumbnail(arg1:string):Promise<string>;
 
+export function GetURLHandlerStatus():Promise<main.URLHandlerStatus>;
+
 export function GetWallhavenConfig():Promise<Record<string, any>>;
 
 export function GetWallpaperTags():Promise<Record<string, any>>;
@@ -92,6 +96,8 @@ export function GetWallpaperTags():Promise<Record<string, any>>;
 export function HandleDroppedFiles(arg1:Array<string>):Promise<string>;
 
 export function HandleIPC(arg1:ipc.Request):Promise<ipc.Response>;
+
+export function HasWindowsRestore():Promise<boolean>;
 
 export function ImportFileDialog(arg1:string):Promise<main.ImportResult>;
 
@@ -125,7 +131,11 @@ export function ReadImageAsDataURL(arg1:string):Promise<string>;
 
 export function RefreshInstalledIconThemes():Promise<Array<icontheme.ThemeSummary>>;
 
+export function RegisterURLHandler():Promise<void>;
+
 export function ResetState():Promise<void>;
+
+export function RestoreWindowsSettings():Promise<string>;
 
 export function SaveAndApplyTheme(arg1:main.SaveAndApplyThemeRequest):Promise<theme.ApplyResult>;
 
@@ -156,3 +166,5 @@ export function SyncState(arg1:main.SyncStateRequest):Promise<void>;
 export function ThemeFolderExists(arg1:string):Promise<boolean>;
 
 export function ToggleFavorite(arg1:string,arg2:string,arg3:Record<string, any>):Promise<boolean>;
+
+export function UnregisterURLHandler():Promise<void>;
