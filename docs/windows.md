@@ -39,9 +39,11 @@ make build-windows    # writes build/bin/aether.exe and build/bin/aether-cli.exe
 | Purpose | Location |
 |---------|----------|
 | Settings, blueprints, custom templates, generated theme | `%APPDATA%\aether\` |
-| Downloaded wallpapers, restore record, installed-file list | `%LOCALAPPDATA%\aether\data\` |
+| Restore record, installed-file list | `%LOCALAPPDATA%\aether\data\` |
 | Thumbnails, palette cache, blurred wallpapers (safe to delete) | `%LOCALAPPDATA%\aether\cache\` |
-| Default wallpaper folder | `%USERPROFILE%\Pictures\Wallpapers` |
+| Wallpaper library and downloaded wallpapers | `%USERPROFILE%\Pictures\Wallpapers` |
+
+Downloads from Wallhaven, GitHub and favorites exports are saved in the wallpaper library, the folder the **Local** tab scans. A downloaded wallpaper therefore shows up in the gallery and in Explorer right away. If you picked another folder under **Settings → Wallpaper folder**, downloads go there instead.
 
 If `XDG_CONFIG_HOME`, `XDG_DATA_HOME` or `XDG_CACHE_HOME` are set, Aether uses them as it does on Linux (Neovim and WezTerm honour them on Windows too).
 

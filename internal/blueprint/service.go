@@ -86,10 +86,16 @@ func (s *Service) Save(name string, bp Blueprint) error {
 		return fmt.Errorf("validate blueprint: %w", err)
 	}
 
-	// Sanitize filename
-	safeName := strings.ReplaceAll(name, "/", "-")
-	safeName = strings.ReplaceAll(safeName, " ", "-")
+	// Sanitize filename. A backslash or invalid Windows character here would
+	// create a subdirectory (or fail) and hide the blueprint from LoadAll.
+	safeName := safeFileStem(strings.ReplaceAll(name, " ", "-"))
+	if safeName == "" {
+		return fmt.Errorf("blueprint name must contain letters or digits")
+	}
 	filename := safeName + ".json"
+	if filepath.Base(filename) != filename {
+		return fmt.Errorf("invalid blueprint name")
+	}
 	path := filepath.Join(s.dir, filename)
 
 	return platform.WriteJSON(path, bp)

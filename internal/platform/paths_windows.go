@@ -11,8 +11,9 @@ import (
 // files in the local profile:
 //
 //	%APPDATA%\aether               settings, blueprints, generated theme
-//	%LOCALAPPDATA%\aether\data     downloaded wallpapers and restore data
+//	%LOCALAPPDATA%\aether\data     restore data and cached downloads
 //	%LOCALAPPDATA%\aether\cache    thumbnails, palettes, blurred images
+//	%USERPROFILE%\Pictures\Wallpapers  wallpaper library and downloads
 //
 // XDG_CONFIG_HOME, XDG_DATA_HOME and XDG_CACHE_HOME win when set, as they do
 // for Neovim and WezTerm on Windows, so a dotfiles setup can keep Aether in
@@ -42,6 +43,14 @@ func dataDir() string {
 
 func wallpaperDir() string {
 	return filepath.Join(homeDir(), "Pictures", "Wallpapers")
+}
+
+// downloadDir is the wallpaper library, not the private data directory. A
+// downloaded wallpaper has to be usable afterwards: the Local browser scans
+// Pictures\Wallpapers, so saving there makes it appear in the gallery and in
+// Explorer instead of disappearing under %LOCALAPPDATA%.
+func downloadDir() string {
+	return wallpaperDir()
 }
 
 // RoamingAppData returns %APPDATA%.

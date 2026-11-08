@@ -6,7 +6,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"net/url"
 	"os"
+	pathpkg "path"
 	"path/filepath"
 	"runtime"
 	"strings"
@@ -652,11 +654,7 @@ func (a *App) LoadBlueprint(name string) error {
 	a.state.WallpaperPath = a.resolveWallpaper(bp.Palette)
 	a.state.WallpaperBlur = bp.Palette.WallpaperBlur
 	a.state.LightMode = bp.Palette.LightMode
-	if bp.Palette.AdditionalImages != nil {
-		a.state.AdditionalImages = bp.Palette.AdditionalImages
-	} else {
-		a.state.AdditionalImages = []string{}
-	}
+	a.state.AdditionalImages = existingAdditionalImages(bp.Palette.AdditionalImages)
 	a.state.Adjustments = a.adjustmentsFromBlueprint(bp)
 	a.state.AppOverrides = a.appOverridesFromBlueprint(bp)
 	iconTheme, err := bp.IconThemeSelection()
@@ -665,6 +663,24 @@ func (a *App) LoadBlueprint(name string) error {
 	}
 	a.state.IconTheme = iconTheme
 	return nil
+}
+
+// existingAdditionalImages drops entries that no longer exist (for example a
+// blueprint made on another machine). The theme writer treats a missing
+// additional image as fatal, so one stale entry would block the whole apply.
+func existingAdditionalImages(paths []string) []string {
+	kept := make([]string, 0, len(paths))
+	for _, path := range paths {
+		if path == "" {
+			continue
+		}
+		if info, err := os.Stat(path); err == nil && info.Mode().IsRegular() && theme.IsImageFile(path) {
+			kept = append(kept, path)
+			continue
+		}
+		log.Printf("[blueprint] dropping missing additional image %q", path)
+	}
+	return kept
 }
 
 // ApplyBlueprint loads a blueprint by name and applies it as the active theme.
@@ -697,11 +713,7 @@ func (a *App) ApplyBlueprint(name string) (*theme.ApplyResult, error) {
 	a.state.WallpaperPath = a.resolveWallpaper(bp.Palette)
 	a.state.WallpaperBlur = bp.Palette.WallpaperBlur
 	a.state.LightMode = bp.Palette.LightMode
-	if bp.Palette.AdditionalImages != nil {
-		a.state.AdditionalImages = bp.Palette.AdditionalImages
-	} else {
-		a.state.AdditionalImages = []string{}
-	}
+	a.state.AdditionalImages = existingAdditionalImages(bp.Palette.AdditionalImages)
 	a.state.Adjustments = a.adjustmentsFromBlueprint(bp)
 	a.state.AppOverrides = a.appOverridesFromBlueprint(bp)
 	iconTheme, err := bp.IconThemeSelection()
@@ -965,8 +977,41 @@ func (a *App) SearchWallhaven(params wallhaven.SearchParams) (*wallhaven.SearchR
 }
 
 // DownloadWallpaper downloads a wallpaper from a URL. Returns local path.
+// On Windows the file lands in the wallpaper library (the configured folder,
+// or %USERPROFILE%\Pictures\Wallpapers) so it is visible in the Local browser.
 func (a *App) DownloadWallpaper(imageURL string) (string, error) {
-	return a.wallhaven.Download(imageURL)
+	dir := wallpaperDownloadDir()
+	if err := platform.EnsureDir(dir); err != nil {
+		return "", fmt.Errorf("prepare wallpaper folder: %w", err)
+	}
+	return a.wallhaven.DownloadTo(imageURL, dir)
+}
+
+// wallpaperDownloadDir is where a downloaded wallpaper is stored. On Windows
+// it is the wallpaper library the Local browser scans, so downloads show up in
+// the gallery; on other platforms it stays in the data directory.
+func wallpaperDownloadDir() string {
+	if runtime.GOOS == "windows" {
+		dir := wallpaperFolderFromConfig(readConfigJSON("settings.json"))
+		if !usableWallpaperFolder(dir) {
+			log.Printf("[wallpaper] configured folder %q is not a Windows path; using the default library", dir)
+			return platform.WallpaperDir()
+		}
+		return dir
+	}
+	return platform.DownloadDir()
+}
+
+// usableWallpaperFolder rejects a config value that is not an absolute path on
+// this platform, such as a Linux "/home/..." path migrated in settings.json.
+func usableWallpaperFolder(dir string) bool {
+	if strings.TrimSpace(dir) == "" || !filepath.IsAbs(dir) {
+		return false
+	}
+	if runtime.GOOS == "windows" && filepath.VolumeName(dir) == "" {
+		return false
+	}
+	return true
 }
 
 // ---------------------------------------------------------------------------
@@ -976,7 +1021,7 @@ func (a *App) DownloadWallpaper(imageURL string) (string, error) {
 // ScanLocalWallpapers scans the configured local wallpaper directory.
 func (a *App) ScanLocalWallpapers() ([]wallpaper.WallpaperInfo, error) {
 	dir := wallpaperFolderFromConfig(readConfigJSON("settings.json"))
-	if dir == platform.WallpaperDir() {
+	if dir == platform.WallpaperDir() || !usableWallpaperFolder(dir) {
 		return wallpaper.ScanDefaultDirs()
 	}
 	info, err := os.Stat(dir)
@@ -987,6 +1032,49 @@ func (a *App) ScanLocalWallpapers() ([]wallpaper.WallpaperInfo, error) {
 		return nil, fmt.Errorf("wallpaper folder is not a directory: %s", dir)
 	}
 	return wallpaper.ScanDirectory(dir)
+}
+
+// ShowFileInFolder opens the system file manager at the folder containing
+// path. Windows has no stable file:// URL for a drive path, so this goes
+// through the OS instead of the webview.
+func (a *App) ShowFileInFolder(path string) error {
+	dir, err := folderToShow(path)
+	if err != nil {
+		return err
+	}
+	return platform.OpenPath(dir)
+}
+
+// safeFileNameStem removes characters Windows rejects from a generated file
+// name and trims the trailing dots/spaces it also rejects.
+func safeFileNameStem(name string) string {
+	name = strings.Map(func(r rune) rune {
+		switch r {
+		case '<', '>', ':', '"', '/', '\\', '|', '?', '*', 0:
+			return '-'
+		}
+		if r < 32 {
+			return '-'
+		}
+		return r
+	}, name)
+	return strings.TrimRight(name, " .")
+}
+
+// folderToShow returns the folder that contains path, or path itself when it
+// is already a directory.
+func folderToShow(path string) (string, error) {
+	if strings.TrimSpace(path) == "" {
+		return "", fmt.Errorf("no file to show")
+	}
+	info, err := os.Stat(path)
+	if err != nil {
+		return "", fmt.Errorf("locate file: %w", err)
+	}
+	if info.IsDir() {
+		return path, nil
+	}
+	return filepath.Dir(path), nil
 }
 
 // GetThumbnail returns a thumbnail path for an image.
@@ -1008,8 +1096,12 @@ func (a *App) IsPreviewCached(path string) bool {
 // Omarchy Themes
 // ---------------------------------------------------------------------------
 
-// LoadOmarchyThemes discovers all installed Omarchy themes.
+// LoadOmarchyThemes discovers all installed Omarchy themes. Omarchy is a Linux
+// desktop, so other platforms get an empty list instead of scanning Linux paths.
 func (a *App) LoadOmarchyThemes() ([]omarchy.Theme, error) {
+	if !omarchy.IsInstalled() {
+		return nil, nil
+	}
 	return omarchy.LoadAllThemes()
 }
 
@@ -1053,27 +1145,31 @@ func (a *App) CancelBatchProcessing() {
 // ReadImageAsDataURL reads a local image file and returns it as a base64 data URL.
 // This is needed because webkit2gtk cannot load file:// paths directly.
 func (a *App) ReadImageAsDataURL(path string) (string, error) {
-	if !theme.IsImageFile(path) {
-		return "", fmt.Errorf("unsupported image file: %s", path)
-	}
-
 	data, err := os.ReadFile(path)
 	if err != nil {
 		return "", fmt.Errorf("read file: %w", err)
 	}
 
-	// Detect MIME type from extension
-	ext := strings.ToLower(filepath.Ext(path))
-	mime := "image/jpeg"
-	switch ext {
-	case ".png":
-		mime = "image/png"
-	case ".gif":
-		mime = "image/gif"
-	case ".webp":
-		mime = "image/webp"
-	case ".bmp":
-		mime = "image/bmp"
+	mime := ""
+	if theme.IsImageFile(path) {
+		// Detect MIME type from extension
+		ext := strings.ToLower(filepath.Ext(path))
+		mime = "image/jpeg"
+		switch ext {
+		case ".png":
+			mime = "image/png"
+		case ".gif":
+			mime = "image/gif"
+		case ".webp":
+			mime = "image/webp"
+		case ".bmp":
+			mime = "image/bmp"
+		}
+	} else if detectedMIME, _, ok := wallpaper.DetectImage(path); ok {
+		// Extensionless and .jfif files still decode; serve them by content.
+		mime = detectedMIME
+	} else {
+		return "", fmt.Errorf("unsupported image file: %s", path)
 	}
 
 	encoded := base64.StdEncoding.EncodeToString(data)
@@ -1104,7 +1200,17 @@ func (a *App) SaveDataURLToFile(dataURL string, originalPath string) (string, er
 	cacheDir := filepath.Join(platform.CacheDir(), "filtered")
 	_ = platform.EnsureDir(cacheDir)
 
-	baseName := strings.TrimSuffix(filepath.Base(originalPath), filepath.Ext(originalPath))
+	// A URL-shaped original path has no Windows-safe base name. Use its last
+	// URL segment and strip characters Windows rejects.
+	name := originalPath
+	if parsed, err := url.Parse(name); err == nil && parsed.Scheme != "" && parsed.Path != "" {
+		name = pathpkg.Base(parsed.Path)
+	}
+	baseName := strings.TrimSuffix(filepath.Base(name), filepath.Ext(name))
+	baseName = safeFileNameStem(baseName)
+	if baseName == "" {
+		baseName = "wallpaper"
+	}
 	outPath := filepath.Join(cacheDir, baseName+"_filtered"+ext)
 
 	if err := os.WriteFile(outPath, decoded, 0644); err != nil {
@@ -1172,6 +1278,9 @@ var allExportableApps = map[string]bool{
 	"icons": true, "kitty": true, "mako": true, "neovim": true,
 	"swayosd": true, "vencord": true, "vscode": true, "walker": true,
 	"warp": true, "waybar": true, "wofi": true, "zed": true,
+	// Windows targets
+	"windows": true, "windows-wallpaper": true, "windows-terminal": true,
+	"leopardwm": true, "komorebi": true, "wezterm": true,
 }
 
 // ExportTheme exports the current theme to a user-chosen directory.

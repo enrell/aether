@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"runtime"
 	"sync"
 
 	"aether/internal/blueprint"
@@ -225,7 +226,14 @@ func (a *App) ConfirmExternalImport(expectedSourceURL string) error {
 		return nil
 	}
 
-	result, err := a.writer.ApplyTheme(a.state, theme.DefaultApplySettings())
+	// A link from any web page can reach this dialog. On Windows, applying
+	// changes the registry and desktop, so only the targets the user enabled
+	// in the editor are touched.
+	settings := theme.DefaultApplySettings()
+	if runtime.GOOS == "windows" {
+		settings = theme.SavedTargetSettings()
+	}
+	result, err := a.writer.ApplyTheme(a.state, settings)
 	if err != nil {
 		return fmt.Errorf("apply: %w", err)
 	}

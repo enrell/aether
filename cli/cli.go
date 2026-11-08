@@ -5,7 +5,8 @@ import (
 	"fmt"
 	"os"
 	"runtime"
-	"strings"
+
+	"aether/internal/platform"
 )
 
 // Version is set at build time via ldflags.
@@ -286,11 +287,5 @@ var validModes = map[string]bool{
 }
 
 func expandHome(path string) string {
-	if strings.HasPrefix(path, "~/") {
-		home, err := os.UserHomeDir()
-		if err == nil {
-			return home + path[1:]
-		}
-	}
-	return path
+	return platform.ExpandUserPath(path)
 }

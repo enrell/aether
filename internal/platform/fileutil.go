@@ -163,6 +163,13 @@ func writeFileAtomicThen(path string, content io.Reader, perm os.FileMode, befor
 	return replaceFile(temp.Name(), path)
 }
 
+// Rename publishes from at to. On Windows a brief sharing violation (an
+// antivirus scanner, Explorer or the currently displayed wallpaper) is retried
+// instead of failing the whole operation.
+func Rename(from, to string) error {
+	return replaceFile(from, to)
+}
+
 // EnsureDir creates the directory at path along with any necessary parents
 // (equivalent to mkdir -p).
 func EnsureDir(path string) error {

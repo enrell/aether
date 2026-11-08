@@ -54,7 +54,9 @@ func ScanDirectory(dir string) ([]WallpaperInfo, error) {
 
 		name := d.Name()
 		if rel, err := filepath.Rel(root, path); err == nil && rel != "." && !strings.HasPrefix(rel, "..") {
-			name = rel
+			// The UI splits and searches with "/"; keep relative names
+			// portable instead of showing Windows backslashes.
+			name = filepath.ToSlash(rel)
 		}
 
 		results = append(results, WallpaperInfo{

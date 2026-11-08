@@ -41,3 +41,7 @@ func dataDir() string {
 func wallpaperDir() string {
 	return filepath.Join(homeDir(), "Wallpapers")
 }
+
+func downloadDir() string {
+	return filepath.Join(dataDir(), "wallpapers")
+}

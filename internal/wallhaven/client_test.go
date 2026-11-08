@@ -227,6 +227,40 @@ func TestDownloadBoundsAndCache(t *testing.T) {
 	}
 }
 
+func TestDownloadToUsesConfiguredDirectory(t *testing.T) {
+	t.Setenv("HOME", t.TempDir())
+	t.Setenv("XDG_DATA_HOME", t.TempDir())
+	library := filepath.Join(t.TempDir(), "Pictures", "Wallpapers")
+	client := NewClient()
+	client.http.Transport = roundTripFunc(func(req *http.Request) (*http.Response, error) {
+		return &http.Response{StatusCode: http.StatusOK, Body: io.NopCloser(strings.NewReader("image data"))}, nil
+	})
+	path, err := client.DownloadTo("https://w.wallhaven.cc/full/ab/wallhaven-abc123.jpg", library)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if want := filepath.Join(library, "wallhaven-abc123.jpg"); path != want {
+		t.Fatalf("download path = %q, want %q", path, want)
+	}
+	if data, err := os.ReadFile(path); err != nil || string(data) != "image data" {
+		t.Fatalf("download contents: %q, error %v", data, err)
+	}
+}
+
+func TestSafeDownloadFilename(t *testing.T) {
+	for name, want := range map[string]string{
+		"wall:paper.png":   "wall_paper.png",
+		"CON.jpg":          "_CON.jpg",
+		"trailing.jpg.":    "trailing.jpg",
+		"two  spaces .jpg": "two  spaces .jpg",
+		"...":              "",
+	} {
+		if got := safeDownloadFilename(name); got != want {
+			t.Errorf("safeDownloadFilename(%q) = %q, want %q", name, got, want)
+		}
+	}
+}
+
 func TestRemoteSourcesWithSameFilenameUseDistinctCacheEntries(t *testing.T) {
 	t.Setenv("HOME", t.TempDir())
 	t.Setenv("XDG_CONFIG_HOME", t.TempDir())

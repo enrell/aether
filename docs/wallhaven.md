@@ -46,6 +46,6 @@ The key is stored locally at `~/.config/aether/wallhaven.json`.
 
 1. Search or browse wallpapers
 2. Click a wallpaper to select it
-3. Wallpaper downloads to `~/.local/share/aether/wallpapers/`
+3. Wallpaper downloads to `~/.local/share/aether/wallpapers/` (`%USERPROFILE%\Pictures\Wallpapers` on Windows, or the folder chosen under Settings)
 4. Switches to Palette Editor for color extraction
 5. Star icon adds to Favorites for quick access

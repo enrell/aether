@@ -65,9 +65,12 @@ func WallpaperDir() string {
 	return wallpaperDir()
 }
 
-// DownloadDir returns ~/.local/share/aether/wallpapers.
+// DownloadDir returns the directory downloaded wallpapers are saved to.
+// Linux: ~/.local/share/aether/wallpapers
+// Windows: %USERPROFILE%\Pictures\Wallpapers, the same folder the Local browser
+// scans, so a download is visible in the library and in Explorer.
 func DownloadDir() string {
-	return filepath.Join(DataDir(), "wallpapers")
+	return downloadDir()
 }
 
 // ThumbnailDir returns ~/.cache/aether/thumbnails.
@@ -86,7 +89,8 @@ func BlurDir() string {
 }
 
 // EnsureAllDirs creates all directories required by Aether. It does not create
-// WallpaperDir because that is user-managed.
+// WallpaperDir because that is user-managed, except on Windows where
+// DownloadDir is the wallpaper library and downloads need it to exist.
 func EnsureAllDirs() error {
 	dirs := []string{
 		ConfigDir(),
@@ -118,6 +122,14 @@ func HomeDir() string {
 func homeDir() string {
 	dir, err := os.UserHomeDir()
 	if err != nil {
+		if runtime.GOOS == "windows" {
+			// os.UserHomeDir reads %USERPROFILE%; keep the Windows shape if
+			// that lookup failed instead of producing /home/<user>.
+			if profile := os.Getenv("USERPROFILE"); profile != "" {
+				return profile
+			}
+			return filepath.Join(os.Getenv("HOMEDRIVE"), os.Getenv("HOMEPATH"))
+		}
 		if runtime.GOOS == "darwin" {
 			return filepath.Join("/Users", os.Getenv("USER"))
 		}

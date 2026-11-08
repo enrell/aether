@@ -16,10 +16,11 @@ import (
 // stubDownloader stands in for the wallhaven client. Remote URLs map to files
 // that already exist on disk, so the tests never touch the network.
 type stubDownloader struct {
-	files   map[string]string // url -> local path
-	block   chan struct{}     // when non-nil, downloads wait on it or on ctx
-	calls   int
-	failAll bool
+	files       map[string]string // url -> local path
+	block       chan struct{}     // when non-nil, downloads wait on it or on ctx
+	calls       int
+	exportCalls int
+	failAll     bool
 }
 
 func (s *stubDownloader) DownloadContext(ctx context.Context, url string) (string, error) {
@@ -39,6 +40,12 @@ func (s *stubDownloader) DownloadContext(ctx context.Context, url string) (strin
 		return "", os.ErrNotExist
 	}
 	return local, nil
+}
+
+// DownloadForExport keeps export downloads in the cache.
+func (s *stubDownloader) DownloadForExport(ctx context.Context, url string) (string, error) {
+	s.exportCalls++
+	return s.DownloadContext(ctx, url)
 }
 
 func writeFixture(t *testing.T, dir, name, content string) string {
@@ -150,6 +157,9 @@ func TestExportArchivesLocalAndRemoteWithManifest(t *testing.T) {
 	}
 
 	zipPath := runExport(t, New(dl), items, dest)
+	if dl.exportCalls != 1 {
+		t.Errorf("export downloads = %d, want 1 (favorites must use the cache)", dl.exportCalls)
+	}
 
 	got := zipEntries(t, zipPath)
 	want := []string{"abc123.jpg", manifestName, "sunset.jpg"}
@@ -179,6 +189,32 @@ func TestExportArchivesLocalAndRemoteWithManifest(t *testing.T) {
 	}
 	if manifest[1].Meta["id"] != "abc123" {
 		t.Errorf("manifest meta id = %v, want abc123", manifest[1].Meta["id"])
+	}
+}
+
+type plainDownloader struct {
+	stub *stubDownloader
+}
+
+func (p plainDownloader) DownloadContext(ctx context.Context, url string) (string, error) {
+	return p.stub.DownloadContext(ctx, url)
+}
+
+func TestExportFallsBackWhenTheDownloaderHasNoCacheMethod(t *testing.T) {
+	src := t.TempDir()
+	dest := t.TempDir()
+	remoteLocal := writeFixture(t, src, "wall.jpg", "bytes")
+	stub := &stubDownloader{files: map[string]string{
+		"https://example.com/wall.jpg": remoteLocal,
+	}}
+	zipPath := runExport(t, New(plainDownloader{stub: stub}), []Item{
+		{Path: "https://example.com/wall.jpg", Name: "wall.jpg"},
+	}, dest)
+	if stub.exportCalls != 0 {
+		t.Errorf("fallback downloader used DownloadForExport %d times", stub.exportCalls)
+	}
+	if got := zipEntries(t, zipPath); len(got) != 2 {
+		t.Errorf("archive entries = %v, want the image and manifest", got)
 	}
 }
 
@@ -308,6 +344,9 @@ func TestSanitizeNameStripsPathTraversal(t *testing.T) {
 	if got := entryLabel(Item{Path: "/tmp/x.jpg", Name: "../../etc/passwd"}); got != "etcpasswd.jpg" {
 		t.Errorf("entryLabel = %q, want etcpasswd.jpg", got)
 	}
+	if got := entryLabel(Item{Path: "/tmp/x.jpg", Name: "CON"}); got != "_CON.jpg" {
+		t.Errorf("entryLabel = %q, want _CON.jpg", got)
+	}
 }
 
 type cancelAfterCheck struct {
@@ -363,6 +402,13 @@ func TestExportReservesManifestName(t *testing.T) {
 	path := runExport(t, New(nil), []Item{{Path: source, Name: manifestName}}, t.TempDir())
 	if got := zipEntries(t, path); len(got) != 2 || got[0] != "favorites-2.json" || got[1] != manifestName {
 		t.Fatalf("archive entries = %v", got)
+	}
+}
+
+func TestRemoteEntryLabelUsesURLBaseName(t *testing.T) {
+	got := entryLabel(Item{Path: "https://example.com/owner/repo/main/wallpapers/wall.png"})
+	if got != "wall.png" {
+		t.Fatalf("entry name = %q, want wall.png", got)
 	}
 }
 
