@@ -49,6 +49,7 @@
         getOmarchyAvailable,
         initOmarchyCapabilities,
     } from '$lib/stores/omarchy.svelte';
+    import {getIsWindows} from '$lib/stores/platform.svelte';
 
     let showImportMenu = $state(false);
     let showApplyMenu = $state(false);
@@ -60,7 +61,7 @@
     const CONFIRM_CONFIG = {
         revert: {
             title: 'Revert system theme?',
-            body: 'This will roll your desktop back to its default theme. Your editor state stays intact, so you can re-apply afterwards.',
+            body: 'This restores the desktop settings Aether changed. On Linux it rolls back to the default theme; on Windows it restores your wallpaper, mode and accent colour. Your editor state stays intact, so you can re-apply afterwards.',
             confirmLabel: 'Revert',
             run: () => handleClear(),
         },
@@ -87,15 +88,17 @@
     let apiKeySet = $derived(getApiKey() !== '');
     let totalResults = $derived(getTotalResults());
 
-    const exportAppGroups = [
-        {
-            label: 'Editor themes',
-            apps: [
-                {key: 'vscode', name: 'VS Code'},
-                {key: 'zed', name: 'Zed'},
-                {key: 'neovim', name: 'Neovim'},
-            ],
-        },
+    const editorAppGroup = {
+        label: 'Editor themes',
+        apps: [
+            {key: 'vscode', name: 'VS Code'},
+            {key: 'zed', name: 'Zed'},
+            {key: 'neovim', name: 'Neovim'},
+        ],
+    } as const;
+
+    const linuxExportAppGroups = [
+        editorAppGroup,
         {
             label: 'Terminals',
             apps: [
@@ -104,6 +107,7 @@
                 {key: 'ghostty', name: 'Ghostty'},
                 {key: 'kitty', name: 'Kitty'},
                 {key: 'warp', name: 'Warp'},
+                {key: 'wezterm', name: 'WezTerm'},
             ],
         },
         {
@@ -130,9 +134,37 @@
         },
     ] as const;
 
+    const windowsExportAppGroups = [
+        editorAppGroup,
+        {
+            label: 'Terminals',
+            apps: [
+                {key: 'alacritty', name: 'Alacritty'},
+                {key: 'wezterm', name: 'WezTerm'},
+            ],
+        },
+        {
+            label: 'Windows',
+            apps: [
+                {key: 'windows', name: 'Mode & accent'},
+                {key: 'windows-wallpaper', name: 'Wallpaper'},
+                {key: 'windows-terminal', name: 'Terminal'},
+                {key: 'leopardwm', name: 'LeopardWM'},
+                {key: 'komorebi', name: 'Komorebi'},
+            ],
+        },
+    ] as const;
+
+    let exportAppGroups = $derived(
+        getIsWindows() ? windowsExportAppGroups : linuxExportAppGroups
+    );
+
     function createDefaultExportApps(): Record<string, boolean> {
         const apps: Record<string, boolean> = {};
-        for (const group of exportAppGroups) {
+        for (const group of [
+            ...linuxExportAppGroups,
+            ...windowsExportAppGroups,
+        ]) {
             for (const app of group.apps) {
                 apps[app.key] = true;
             }
@@ -145,7 +177,11 @@
         exportAppGroups.reduce((sum, group) => sum + group.apps.length, 0)
     );
     let exportSelectedCount = $derived(
-        Object.values(exportApps).filter(Boolean).length
+        exportAppGroups.reduce(
+            (sum, group) =>
+                sum + group.apps.filter(app => exportApps[app.key]).length,
+            0
+        )
     );
 
     function setAllExportApps(enabled: boolean) {
@@ -179,13 +215,27 @@
 
     async function handleClear() {
         try {
+            if (getIsWindows()) {
+                // ClearTheme only removes Linux/Omarchy files on Windows;
+                // restoring the settings Aether changed is the real revert.
+                const {RestoreWindowsSettings} = await import(
+                    '../../../../wailsjs/go/main/App'
+                );
+                showToast(await RestoreWindowsSettings(), 6000);
+                return;
+            }
             const {ClearTheme} = await import(
                 '../../../../wailsjs/go/main/App'
             );
             await ClearTheme();
             showToast('Reverted to system theme');
-        } catch {
-            showToast('Couldn’t revert — see logs for details');
+        } catch (error) {
+            showToast(
+                `Couldn’t revert: ${
+                    error instanceof Error ? error.message : String(error)
+                }`,
+                6000
+            );
         }
     }
 
@@ -211,8 +261,13 @@
                 '../../../../wailsjs/go/main/App'
             );
             const nativeExport = getOmarchyAvailable();
+            // Only the groups this platform offers count: hidden Linux targets
+            // must not be re-enabled in the exported theme on Windows.
+            const visibleKeys = new Set<string>(
+                exportAppGroups.flatMap(group => group.apps.map(app => app.key))
+            );
             const includedApps = Object.entries(exportApps)
-                .filter(([, enabled]) => enabled)
+                .filter(([key, enabled]) => enabled && visibleKeys.has(key))
                 .map(([key]) => key);
             const path = await ExportTheme({
                 name: exportName.trim(),

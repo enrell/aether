@@ -15,12 +15,18 @@
         getOmarchyAvailable,
         initOmarchyCapabilities,
     } from '$lib/stores/omarchy.svelte';
-    import {getIsWindows, initPlatform} from '$lib/stores/platform.svelte';
+    import {
+        getIsWindows,
+        getPlatformKnown,
+        initPlatform,
+    } from '$lib/stores/platform.svelte';
 
     let lightMode = $derived(getLightMode());
     let isOmarchy = $derived(getOmarchyAvailable());
-    // Desktop icon themes are an XDG feature; Windows has no equivalent.
+    // Desktop icon themes are an XDG feature; Windows has no equivalent. Wait
+    // for the platform lookup so the Linux picker does not flash on Windows.
     let isWindows = $derived(getIsWindows());
+    let platformKnown = $derived(getPlatformKnown());
 
     const paletteModes = [
         {value: 'dark', label: 'Dark', title: 'Generate a dark palette'},
@@ -55,7 +61,7 @@
 
     <SectionLabel label="Adjust" />
     <ColorAdjustments />
-    {#if !isWindows}
+    {#if platformKnown && !isWindows}
         <IconThemePicker />
     {/if}
     <AccessibilityPanel />

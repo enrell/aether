@@ -1,9 +1,11 @@
 <script lang="ts">
     import {openURL} from '$lib/utils/browser';
+    import {getIsWindows} from '$lib/stores/platform.svelte';
     import aetherLogo from '../../../assets/aether-logo.png';
 
     type Link = {label: string; url: string; description: string};
 
+    let isWindows = $derived(getIsWindows());
     const links: Link[] = [
         {
             label: 'GitHub',
@@ -44,14 +46,13 @@
         </div>
         <p class="text-fg-secondary text-pretty text-[13px] leading-[1.55]">
             Aether extracts color palettes from wallpapers and applies cohesive
-            themes across your Linux desktop. Built with Wails, Go, and Svelte
-            5.
+            themes across your desktop. Built with Wails, Go, and Svelte 5.
         </p>
         <nav
             class="flex flex-wrap justify-center gap-4 text-[12.5px]"
             aria-label="Links"
         >
-            {#each links as link}
+            {#each isWindows ? links.filter(l => l.label !== 'Omarchy') : links as link}
                 <button
                     type="button"
                     class="text-accent hover:text-accent-hover transition-colors"

@@ -20,6 +20,7 @@ const app = vi.hoisted(() => ({
 vi.mock('../wailsjs/go/main/App', () => app);
 vi.mock('../src/lib/stores/platform.svelte', () => ({
     getPlatform: () => app.platform,
+    getPlatformKnown: () => app.platform !== '',
     getIsWindows: () => app.platform === 'windows',
     initPlatform: vi.fn().mockResolvedValue(undefined),
 }));

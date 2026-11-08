@@ -153,6 +153,8 @@ export function ScanLocalWallpapers():Promise<Array<wallpaper.WallpaperInfo>>;
 
 export function SearchWallhaven(arg1:wallhaven.SearchParams):Promise<wallhaven.SearchResult>;
 
+export function ShowFileInFolder(arg1:string):Promise<void>;
+
 export function SetExtractionMode(arg1:string):Promise<void>;
 
 export function SetWallhavenAPIKey(arg1:string):Promise<void>;

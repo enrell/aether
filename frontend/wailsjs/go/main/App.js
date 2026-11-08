@@ -286,6 +286,10 @@ export function SearchWallhaven(arg1) {
   return window['go']['main']['App']['SearchWallhaven'](arg1);
 }
 
+export function ShowFileInFolder(arg1) {
+  return window['go']['main']['App']['ShowFileInFolder'](arg1);
+}
+
 export function SetExtractionMode(arg1) {
   return window['go']['main']['App']['SetExtractionMode'](arg1);
 }

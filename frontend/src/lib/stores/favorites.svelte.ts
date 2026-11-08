@@ -1,11 +1,12 @@
 // One shared list keeps favorite controls in sync without per-card IPC calls.
 
 import type {favorites as favoritesNs} from '../../../wailsjs/go/models';
+import {pathKey} from '$lib/utils/path';
 
 export type Favorite = favoritesNs.Favorite;
 
 let favorites = $state<Favorite[]>([]);
-let pathSet = $derived(new Set(favorites.map(f => f.path)));
+let pathSet = $derived(new Set(favorites.map(f => pathKey(f.path))));
 let loadError = $state('');
 let refreshSequence = 0;
 let mutationRevision = 0;
@@ -51,7 +52,7 @@ export function getFavoritesError(): string {
 }
 
 export function isFavorite(path: string): boolean {
-    return pathSet.has(path);
+    return pathSet.has(pathKey(path));
 }
 
 // Adds or removes `path`; resolves to the new favorited state. `data` is
@@ -73,10 +74,12 @@ export function toggleFavorite(
             );
             const nowFavorited = await ToggleFavorite(path, type, metadata);
             if (nowFavorited) {
-                if (!pathSet.has(path))
+                if (!pathSet.has(pathKey(path)))
                     favorites = [...favorites, {path, type, data: metadata}];
             } else {
-                favorites = favorites.filter(f => f.path !== path);
+                favorites = favorites.filter(
+                    f => pathKey(f.path) !== pathKey(path)
+                );
             }
             return nowFavorited;
         });
