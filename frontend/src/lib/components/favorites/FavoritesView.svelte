@@ -44,6 +44,9 @@
     let filterTag = $state<string>('');
     let previewIndex = $state(-1);
     let previewSrc = $state<string>('');
+    // Remote favorites keep their URL in `path`; remember the local download so
+    // the card can show its added state.
+    let addedRemote = $state<Record<string, string>>({});
     let current = true;
     let previewSequence = 0;
     onDestroy(() => {
@@ -175,11 +178,14 @@
             showToast('Already in additional images');
             return;
         }
-        showToast(
-            addAdditionalImage(localPath)
-                ? 'Added to additional images'
-                : 'Skipped: the theme already has a wallpaper with that filename'
-        );
+        if (addAdditionalImage(localPath)) {
+            addedRemote = {...addedRemote, [fav.path]: localPath};
+            showToast('Added to additional images');
+        } else {
+            showToast(
+                'Skipped: the theme already has a wallpaper with that filename'
+            );
+        }
     }
 
     async function resolvePreviewSrc(fav: Favorite): Promise<string> {
@@ -364,7 +370,9 @@
                         path={fav.path}
                         name={fav.data?.name || fav.data?.id || 'Wallpaper'}
                         detail={fav.data?.resolution || ''}
-                        isAdded={getAdditionalImages().includes(fav.path)}
+                        isAdded={getAdditionalImages().includes(
+                            addedRemote[fav.path] ?? fav.path
+                        )}
                         isFavorited={true}
                         applying={getIsApplying()}
                         onuse={() => handleSelect(fav)}

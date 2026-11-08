@@ -10,7 +10,11 @@
     import ColorPickerDialog from '../color-picker/ColorPickerDialog.svelte';
     import WallpaperEditor from '../wallpaper-editor/WallpaperEditor.svelte';
     import ColorDragGhost from './ColorDragGhost.svelte';
-    import {getWallpaperPath, getPalette} from '$lib/stores/theme.svelte';
+    import {
+        getWallpaperPath,
+        getPalette,
+        getAdditionalImages,
+    } from '$lib/stores/theme.svelte';
     import {
         getSidebarVisible,
         getColorPickerOpen,
@@ -21,8 +25,12 @@
 
     let wallpaper = $derived(getWallpaperPath());
     let palette = $derived(getPalette());
+    // Additional images are content too: clicking "Extra" in a gallery card
+    // must show the image instead of leaving the onboarding screen.
     let hasContent = $derived(
-        !!wallpaper || palette.some((c, i) => c !== DEFAULT_PALETTE[i])
+        !!wallpaper ||
+            getAdditionalImages().length > 0 ||
+            palette.some((c, i) => c !== DEFAULT_PALETTE[i])
     );
     let sidebarVisible = $derived(getSidebarVisible());
     let colorPickerOpen = $derived(getColorPickerOpen());

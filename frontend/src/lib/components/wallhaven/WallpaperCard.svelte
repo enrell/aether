@@ -16,6 +16,7 @@
     let {wallpaper, onpreview}: {wallpaper: any; onpreview: () => void} =
         $props();
     let isDownloading = $state(false);
+    let localPath = $state('');
     let favoriteKey = $derived(wallpaper.path || wallpaper.id);
     let isFavorited = $derived(isFavorite(favoriteKey));
     let cardEl = $state<HTMLDivElement | null>(null);
@@ -40,7 +41,7 @@
             const {DownloadWallpaper} = await import(
                 '../../../../wailsjs/go/main/App'
             );
-            const localPath = await DownloadWallpaper(wallpaper.path);
+            localPath = await DownloadWallpaper(wallpaper.path);
             setWallpaperPath(localPath);
             setActiveTab('editor');
             showToast('Wallpaper selected — click Extract to generate palette');
@@ -65,23 +66,27 @@
     }
 
     async function handleAddExtra() {
+        if (isDownloading) return;
+        isDownloading = true;
         try {
             showToast('Downloading wallpaper...');
             const {DownloadWallpaper} = await import(
                 '../../../../wailsjs/go/main/App'
             );
-            const localPath = await DownloadWallpaper(wallpaper.path);
+            localPath = await DownloadWallpaper(wallpaper.path);
             if (getAdditionalImages().includes(localPath)) {
                 showToast('Already in additional images');
                 return;
             }
             showToast(
                 addAdditionalImage(localPath)
-                    ? 'Added to additional images'
+                    ? 'Added to additional images — open Editor to blend it in'
                     : 'Skipped: the theme already has a wallpaper with that filename'
             );
         } catch {
             showToast('Failed to download wallpaper');
+        } finally {
+            isDownloading = false;
         }
     }
 
@@ -95,6 +100,7 @@
         path={wallpaper.path}
         name={wallpaper.id}
         {isFavorited}
+        isAdded={!!localPath && getAdditionalImages().includes(localPath)}
         busy={isDownloading}
         applying={getIsApplying()}
         useLabel={isDownloading ? 'Loading…' : 'Use'}
